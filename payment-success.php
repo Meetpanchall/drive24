@@ -6,6 +6,7 @@ $u = requireLogin();
 $orderId = (int) ($_GET['order'] ?? 0);
 $order = fetchOne('SELECT o.*, v.make, v.model, v.year, v.variant, v.image FROM orders o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE o.id = ? AND o.buyer_id = ?', [$orderId, $u['id']]);
 if (!$order) { flash('error', 'Order not found.'); redirect(base('orders.php')); }
+if (($order['status'] ?? '') === 'pending') { redirect(base('pay.php?order=' . $orderId)); }
 $payment = fetchOne('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC', [$orderId]);
 
 renderHeader('Payment successful', '');

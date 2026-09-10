@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/listings.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/razorpay.php';
 
 $u = requireLogin();
 $listingId = (int) ($_GET['listing'] ?? $_POST['listing_id'] ?? 0);
@@ -18,6 +19,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $city    = trim((string) ($_POST['city'] ?? ''));
     $address = $hub ? 'DRIVE24 hub pickup, ' . $city : trim((string) ($_POST['address'] ?? ''));
 
+    // Step 1: freeze the booking as payment-pending. Money moves only after
+    // the gateway confirms, so abandoned checkouts never reserve the car.
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -30,32 +33,32 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'finance_opted'  => $finance ? 1 : 0,
             'loan_amount'    => $loan,
             'tenure_months'  => $tenure,
-            'status'         => 'confirmed',
+            'status'         => 'pending',
             'delivery_city'  => $city,
             'delivery_address' => $address,
             'delivery_date'  => date('Y-m-d', strtotime('+7 days')),
         ]);
         insert('payments', [
             'order_id' => $orderId,
-            'txn_ref'  => 'TXN' . date('ymdHis') . random_int(10, 99),
+            'txn_ref'  => 'PEND-' . date('ymdHis') . random_int(10, 99),
             'method'   => $method,
             'amount'   => $booking,
-            'status'   => 'paid',
+            'status'   => 'pending',
         ]);
-        insert('escrow_ledger', [
-            'order_id' => $orderId, 'kind' => 'hold', 'amount' => $booking,
-            'note' => 'Booking held in DRIVE24 escrow - released to seller after delivery',
-        ]);
-        insert('rc_transfers', [
-            'order_id' => $orderId, 'listing_id' => $listingId,
-            'buyer_id' => $u['id'], 'seller_id' => (int) $car['seller_id'],
-            'status' => 'sale_completed',
-        ]);
-        q("UPDATE listings SET status = 'reserved' WHERE id = ?", [$listingId]);
-        insert('payouts', ['seller_id' => (int) $car['seller_id'], 'order_id' => $orderId, 'amount' => (float) $car['price'] * 0.96, 'status' => 'pending']);
         $pdo->commit();
     } catch (Throwable $ex) {
         $pdo->rollBack();
+        flash('error', 'Booking could not be created: ' . $ex->getMessage());
+        redirect(base('checkout.php?listing=' . $listingId));
+    }
+
+    // Step 2: hand off to the Razorpay gateway (or simulate it in test mode).
+    if (razorpayEnabled()) {
+        redirect(base('pay.php?order=' . $orderId));
+    }
+    try {
+        confirmBookingPayment($orderId, 'TXN' . date('ymdHis') . random_int(10, 99), $method);
+    } catch (Throwable $ex) {
         flash('error', 'Payment could not be recorded: ' . $ex->getMessage());
         redirect(base('checkout.php?listing=' . $listingId));
     }
@@ -102,7 +105,8 @@ renderHeader('Checkout', '');
         <div><label class="form-label">Tenure</label><select class="form-select" name="tenure"><option>48</option><option selected>60</option><option>72</option><option>84</option></select></div>
       </div>
       <button class="btn btn-primary btn-lg btn-block" style="margin-top:18px" type="submit">Pay <?= rupees(25000) ?> &amp; reserve</button>
-      <p class="muted" style="font-size:12.5px;margin-top:10px">Escrow protected &middot; PCI-DSS aligned &middot; 7-day easy return &middot; Free RC transfer.</p>
+      <p class="muted" style="font-size:12.5px;margin-top:10px"><?= razorpayEnabled() ? 'You will be redirected to <b>Razorpay</b> to complete the payment securely.' : 'Test mode: no keys configured, so this demo confirms the booking instantly.' ?></p>
+      <p class="muted" style="font-size:12.5px;margin-top:4px">Escrow protected &middot; PCI-DSS aligned &middot; 7-day easy return &middot; Free RC transfer.</p>
     </form>
 
     <aside class="card card-pad sticky">
