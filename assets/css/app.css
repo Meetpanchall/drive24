@@ -459,3 +459,51 @@ ul.reg-feats{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-directio
 @media(max-width:1100px){.svc-grid{grid-template-columns:repeat(3,1fr)}.svc-split{grid-template-columns:1fr}}
 @media(max-width:900px){.svc-hero{grid-template-columns:1fr}.svc-hero-img{min-height:170px}.svc-hero-txt{padding:28px 24px 8px}}
 @media(max-width:640px){.svc-grid{grid-template-columns:1fr 1fr}.svc-form{grid-template-columns:1fr}.svc-hero h1{font-size:1.6rem}}
+
+/* finance page redesign */
+.fin-hero{position:relative;display:grid;grid-template-columns:1.1fr 1fr;gap:0;overflow:hidden;border-radius:20px;background:linear-gradient(100deg,#041a4e 28%,#0a3aa8 60%,#1f6df5 100%);min-height:250px}
+.fin-hero-txt{padding:36px 12px 32px 38px;color:#fff;position:relative;z-index:1}
+.plan-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);color:#dbeafe;font-size:12.5px;font-weight:700;border-radius:999px;padding:6px 15px;margin-bottom:12px}
+.fin-hero h1{color:#fff;font-size:2rem;line-height:1.15;margin:0 0 10px}
+.fin-hero h1 .blue{color:#5b9dff}
+.fin-hero p{color:#c9dcff;font-size:14px;margin:0 0 14px;max-width:460px}
+.fin-checks{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;font-weight:600;color:#e3edff}
+.fin-checks i{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;background:#2f7bff;font-style:normal;font-size:11px;margin-right:6px}
+.fin-hero-img{position:relative;min-height:220px}
+.fin-hero-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 62%}
+.fin-hero-img:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0c2f7c 0%,rgba(12,47,124,.5) 24%,rgba(12,47,124,.05) 55%,rgba(4,20,60,.2) 100%)}
+.fin-hero-img .script{position:absolute;right:22px;top:50%;transform:translateY(-50%);z-index:1;color:#fff;font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:1.25rem;line-height:1.3;text-align:right;text-shadow:0 2px 12px rgba(0,0,0,.55)}
+.fin-split{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;margin-top:20px}
+.fin-cal h2{font-size:1.2rem;margin:0}
+.fin-form{grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.fin-form .full{grid-column:1/-1}
+.fin-form .form-label{text-transform:none;letter-spacing:0;font-size:13px;color:#33415c}
+.in-sym{position:absolute;left:13px;color:#8a97ad;font-weight:700;font-size:15px;pointer-events:none}
+.emi-result{margin-top:16px;background:#eef4fe;border:1px solid #cfdef8;border-radius:14px;padding:18px}
+.emi-top{display:flex;gap:13px;align-items:center}
+.emi-ic{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#dbe8fd;color:#0b5cff;flex:none}
+.emi-top small{color:#5b6b83;font-size:13px}
+.emi-big{font-size:2rem;font-weight:800;color:var(--navy);line-height:1.1}
+.emi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.emi-grid .k{display:block;font-size:12.3px;color:#5b6b83}
+.emi-grid b{font-size:14.5px}
+.pre-strip{display:flex;align-items:center;gap:11px;margin-top:14px;background:#eef4fe;border:1px solid #cfdef8;border-radius:12px;padding:11px 15px;font-size:13.5px;color:#1e3a8a;font-weight:600}
+.fin-aside{display:flex;flex-direction:column;gap:18px}
+.fin-aside h3{font-size:1.02rem;display:flex;align-items:center;gap:9px;margin:0 0 6px}
+.fin-aside h3 .star{color:#0b5cff;font-size:17px}
+.svc-ic.sm{width:30px;height:30px;border-radius:9px}
+.lender{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);color:var(--ink)}
+.lender:hover{text-decoration:none;background:#f6f9ff}
+.lender-logo{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#fff;font-weight:800;font-size:15px;flex:none}
+.lender-txt{flex:1;min-width:0}
+.lender-txt b{display:block;font-size:13.8px}
+.lender-txt small{color:var(--muted);font-size:11.8px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lender .num{font-size:13.5px;white-space:nowrap}
+.lender .chev{color:#8a97ad;font-size:19px}
+.doc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.doc-row:last-child{border-bottom:0}
+.doc-ic{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;flex:none}
+.doc-row b{margin-left:auto;font-size:13px;text-align:right}
+@media(max-width:1100px){.fin-split{grid-template-columns:1fr}.fin-form{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.fin-hero{grid-template-columns:1fr}.fin-hero-img{min-height:170px}.fin-hero-txt{padding:28px 24px 8px}}
+@media(max-width:640px){.fin-form{grid-template-columns:1fr}.emi-grid{grid-template-columns:1fr 1fr}.fin-hero h1{font-size:1.6rem}}
