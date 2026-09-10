@@ -30,6 +30,7 @@ if (!$payment) {
         q('UPDATE payments SET txn_ref = ? WHERE id = ?', [$rzpOrderId, (int) $payment['id']]);
     } catch (Throwable $ex) {
         $rzpError = $ex->getMessage();
+        error_log('DRIVE24 pay.php: ' . $ex->getMessage());
     }
 }
 

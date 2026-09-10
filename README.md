@@ -116,6 +116,6 @@ install.php                setup verification + API catalogue
 ## 7. Production wiring (beyond this demo stack)
 
 - SMS/Email: plug Twilio/MSG91/SendGrid into `verify-otp.php` + `forgot-password.php` (demo shows codes/links on screen).
-- Payments: Razorpay is integrated (`checkout.php` -> `pay.php` -> `verify-payment.php`). Paste TEST Key ID/Secret from Dashboard > Settings > API Keys into `config/config.php` (`razorpay` section) or the `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` env vars, enable PHP `curl`, and Pay will open the real Razorpay gateway (UPI/cards/netbanking/wallets/EMI). Without keys the demo auto-confirms in test mode. Verify with Razorpay test cards (e.g. 4111 1111 1111 1111).
+- Payments: Razorpay is integrated (`checkout.php` -> `pay.php` -> `verify-payment.php`) with TEST keys pre-filled in `config/config.php`, so Pay opens the real Razorpay gateway (UPI/cards/netbanking/wallets/EMI) out of the box. Needs PHP `curl` + internet to reach api.razorpay.com. Verify with Razorpay test cards (e.g. 4111 1111 1111 1111). Swap in LIVE keys (or `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` env vars) for production; blank keys fall back to simulated test mode.
 - VIN/history: swap `vinDecode()` and the `vehicle_history` seed with VINData/Parivahan/carVertical APIs.
 - Lenders/insurers: exchange the static panels in `loan-apply.php` / `insurance.php` for partner APIs.

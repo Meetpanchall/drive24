@@ -13,23 +13,32 @@ require_once __DIR__ . '/listings.php';
  * keeps working out of the box.
  */
 
+function razorpayConfig(): array
+{
+    $c = config('razorpay');
+    return is_array($c) ? $c : [];
+}
+
 function razorpayEnabled(): bool
 {
-    $id = (string) (config('razorpay')['key_id'] ?? '');
-    $secret = (string) (config('razorpay')['key_secret'] ?? '');
+    $c = razorpayConfig();
+    $id = (string) ($c['key_id'] ?? '');
+    $secret = (string) ($c['key_secret'] ?? '');
     return $id !== '' && $secret !== '';
 }
 
 function razorpayKeyId(): string
 {
-    return (string) (config('razorpay')['key_id'] ?? '');
+    $c = razorpayConfig();
+    return (string) ($c['key_id'] ?? '');
 }
 
 /** Create an order on Razorpay. Amount is in paise. Returns the decoded order array. */
 function razorpayCreateOrder(int $amountPaise, string $receipt): array
 {
     $id = razorpayKeyId();
-    $secret = (string) (config('razorpay')['key_secret'] ?? '');
+    $rc = razorpayConfig();
+    $secret = (string) ($rc['key_secret'] ?? '');
     if ($id === '' || $secret === '') {
         throw new RuntimeException('Razorpay keys are not configured.');
     }
@@ -61,6 +70,7 @@ function razorpayCreateOrder(int $amountPaise, string $receipt): array
     if ($http < 200 || $http >= 300 || !is_array($data) || empty($data['id'])) {
         $msg = is_array($data) ? (string) (($data['error']['description'] ?? '') ?: $raw) : (string) $raw;
         throw new RuntimeException('Razorpay order failed (HTTP ' . $http . '): ' . substr($msg, 0, 180));
+        error_log('Razorpay order failed (HTTP ' . $http . '): ' . substr($msg, 0, 300));
     }
     return $data;
 }
@@ -68,7 +78,8 @@ function razorpayCreateOrder(int $amountPaise, string $receipt): array
 /** Verify the payment signature sent back by Checkout.js. */
 function razorpayVerifySignature(string $orderId, string $paymentId, string $signature): bool
 {
-    $secret = (string) (config('razorpay')['key_secret'] ?? '');
+    $rc = razorpayConfig();
+    $secret = (string) ($rc['key_secret'] ?? '');
     if ($secret === '' || $orderId === '' || $paymentId === '' || $signature === '') { return false; }
     $expected = hash_hmac('sha256', $orderId . '|' . $paymentId, $secret);
     return hash_equals($expected, $signature);

@@ -12,10 +12,11 @@ return [
         'charset' => 'utf8mb4',
     ],
     'app' => ['name' => 'DRIVE24', 'debug' => getenv('APP_DEBUG') === '1'],
-    // Razorpay payment gateway - paste TEST keys from Dashboard > Settings > API Keys.
-    // Leave blank to run checkout in simulated test mode (no real charge).
+    // Razorpay payment gateway - TEST keys below work out of the box.
+    // Override with RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET (or RAZORPAY_SECRET) env vars,
+    // or paste LIVE keys here when going production.
     'razorpay' => [
-        'key_id'     => getenv('RAZORPAY_KEY_ID') ?: '',
-        'key_secret' => getenv('RAZORPAY_KEY_SECRET') ?: '',
+        'key_id'     => getenv('RAZORPAY_KEY_ID') ?: 'rzp_test_SWgdnbEihzyE7h',
+        'key_secret' => getenv('RAZORPAY_KEY_SECRET') ?: (getenv('RAZORPAY_SECRET') ?: '0CkeTvviOmEisbIcpnyuMIev'),
     ],
 ];

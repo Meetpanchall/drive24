@@ -8,6 +8,7 @@ header('Content-Type: application/json');
 
 function verifyFail(string $error): void
 {
+    error_log('DRIVE24 verify-payment: ' . $error);
     echo json_encode(['ok' => false, 'error' => $error]);
     exit;
 }
