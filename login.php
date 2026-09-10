@@ -66,7 +66,7 @@ renderHeader('Sign in', '');
         <input class="form-control" type="password" name="password" required>
         <button class="btn btn-primary btn-block btn-lg" style="margin-top:16px" type="submit">Sign in</button>
       </form>
-      <p class="muted" style="margin-top:14px">New to DRIVE24? <a href="<?= e(base('register.php')) ?>">Create an account</a></p>
+      <p class="muted" style="margin-top:14px">New to DRIVE24? <a href="<?= e(base('register.php')) ?>">Create an account</a> &middot; <a href="<?= e(base('forgot-password.php')) ?>">Forgot password?</a></p>
     </div>
   </div>
 </div>

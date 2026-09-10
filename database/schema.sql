@@ -17,6 +17,7 @@ CREATE TABLE users (
   city VARCHAR(80) DEFAULT NULL,
   company VARCHAR(120) DEFAULT NULL,
   kyc_status ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending',
+  mobile_verified TINYINT(1) NOT NULL DEFAULT 0,
   status ENUM('active','suspended') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -157,6 +158,7 @@ CREATE TABLE documents (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL, order_id INT DEFAULT NULL,
   doc_type VARCHAR(60) NOT NULL, doc_name VARCHAR(160) NOT NULL,
+  file_url VARCHAR(160) DEFAULT NULL,
   status ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -280,3 +282,221 @@ INSERT INTO leads (name,mobile,city,make,model,year,km_driven,fuel_type,quote_lo
 
 INSERT INTO support_tickets (user_id,subject,category,message,status) VALUES
 (3,'RC transfer status for order D24-2026-0002','rc','Could you share the expected RC transfer completion date?','open');
+------------
+-- SRS extension tables (also in database/migrate.sql for
+-- existing installs). Fresh installs get them + seed rows.
+-- ---------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS listing_images (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL,
+  image VARCHAR(160) NOT NULL,
+  label VARCHAR(80) DEFAULT NULL,
+  sort_order TINYINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  INDEX idx_li_listing (listing_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL,
+  order_id INT DEFAULT NULL,
+  author_id INT NOT NULL,
+  target_user_id INT NOT NULL,
+  reviewer_role ENUM('buyer','seller') NOT NULL DEFAULT 'buyer',
+  rating TINYINT NOT NULL,
+  title VARCHAR(160) DEFAULT NULL,
+  comment TEXT,
+  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_rev_listing (listing_id),
+  INDEX idx_rev_target (target_user_id),
+  CONSTRAINT chk_rating CHECK (rating BETWEEN 1 AND 5)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS chat_threads (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT DEFAULT NULL,
+  buyer_id INT NOT NULL,
+  seller_id INT NOT NULL,
+  subject VARCHAR(160) DEFAULT NULL,
+  status ENUM('open','closed','flagged') NOT NULL DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_ct_parties (buyer_id, seller_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  thread_id INT NOT NULL,
+  sender_id INT NOT NULL,
+  body VARCHAR(2000) NOT NULL,
+  image VARCHAR(160) DEFAULT NULL,
+  flagged TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (thread_id) REFERENCES chat_threads(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_cm_thread (thread_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS loan_applications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  listing_id INT NOT NULL,
+  lender VARCHAR(80) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  tenure_months SMALLINT NOT NULL DEFAULT 60,
+  rate DECIMAL(5,2) NOT NULL DEFAULT 9.50,
+  employment VARCHAR(40) DEFAULT NULL,
+  monthly_income DECIMAL(12,2) DEFAULT NULL,
+  status ENUM('new','under_review','approved','rejected','disbursed') NOT NULL DEFAULT 'new',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  INDEX idx_loan_user (user_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS insurance_quotes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  listing_id INT NOT NULL,
+  insurer VARCHAR(80) NOT NULL,
+  idv DECIMAL(12,2) NOT NULL,
+  premium DECIMAL(12,2) NOT NULL,
+  addons VARCHAR(255) DEFAULT NULL,
+  status ENUM('quoted','purchased','expired') NOT NULL DEFAULT 'quoted',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS inspection_bookings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL,
+  user_id INT NOT NULL,
+  mode ENUM('home','hub') NOT NULL DEFAULT 'home',
+  slot_date DATE NOT NULL,
+  slot_time VARCHAR(20) NOT NULL,
+  address VARCHAR(255) DEFAULT NULL,
+  status ENUM('requested','confirmed','completed','cancelled') NOT NULL DEFAULT 'requested',
+  report_id INT DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_ib_status (status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS vehicle_history (
+  vehicle_id INT PRIMARY KEY,
+  accidents TINYINT NOT NULL DEFAULT 0,
+  accident_details VARCHAR(400) DEFAULT NULL,
+  insurance_claims TINYINT NOT NULL DEFAULT 0,
+  challans TINYINT NOT NULL DEFAULT 0,
+  challan_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  service_records TINYINT NOT NULL DEFAULT 0,
+  flood_damage TINYINT(1) NOT NULL DEFAULT 0,
+  theft_record TINYINT(1) NOT NULL DEFAULT 0,
+  owners_history VARCHAR(255) DEFAULT NULL,
+  report_summary VARCHAR(500) DEFAULT NULL,
+  checked_on DATE DEFAULT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(160) NOT NULL,
+  body VARCHAR(400) DEFAULT NULL,
+  link VARCHAR(255) DEFAULT NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_notif_user (user_id, is_read)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  token_hash VARCHAR(128) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  used TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_pr_token (token_hash)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS otp_codes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT DEFAULT NULL,
+  mobile VARCHAR(20) NOT NULL,
+  code_hash VARCHAR(128) NOT NULL,
+  purpose VARCHAR(30) NOT NULL DEFAULT 'verify',
+  attempts TINYINT NOT NULL DEFAULT 0,
+  expires_at DATETIME NOT NULL,
+  verified TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_otp_mobile (mobile)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS escrow_ledger (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  kind ENUM('hold','release','refund') NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  note VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  INDEX idx_esc_order (order_id)
+) ENGINE=InnoDB;
+
+-- Seed rows for the extension tables
+INSERT INTO listing_images (listing_id, image, label, sort_order) VALUES
+(1,'car4.jpg','Front three-quarter',1),(1,'car7.jpg','Rear three-quarter',2),(1,'car9.jpg','Interior',3),
+(2,'car8.jpg','Front three-quarter',1),(2,'car2.jpg','Interior',2),
+(4,'car1.jpg','Front three-quarter',1),(4,'car4.jpg','Interior',2),
+(5,'car11.jpg','Front three-quarter',1),(5,'car5.jpg','Interior',2),
+(9,'car3.jpg','Front three-quarter',1),(9,'car9.jpg','Interior',2);
+
+INSERT INTO vehicle_history (vehicle_id,accidents,accident_details,insurance_claims,challans,challan_amount,service_records,flood_damage,theft_record,owners_history,report_summary,checked_on) VALUES
+(1,0,'No accident record found',0,1,500,6,0,0,'1 owner since new','Clean history. One traffic challan settled. Full service history available.','2026-08-12'),
+(2,0,'No accident record found',0,0,0,5,0,0,'1 owner since new','Clean history with authorised-service records.','2026-08-14'),
+(3,1,'Rear bumper repaint in 2022, insurer approved',1,2,2000,7,0,0,'2 owners','One minor insured repair. No structural damage reported.','2026-08-16'),
+(4,0,'No accident record found',0,0,0,3,0,0,'1 owner since new','Clean history. Factory warranty valid.','2026-08-18'),
+(5,0,'No accident record found',0,1,1000,6,0,0,'1 owner since new','Clean history. One challan settled.','2026-08-20'),
+(6,0,'No accident record found',1,0,0,9,0,0,'2 owners','High running but full Toyota service history.','2026-08-22'),
+(7,0,'No accident record found',0,0,0,4,0,0,'1 owner since new','Clean history. Under manufacturer warranty.','2026-08-24'),
+(8,0,'No accident record found',0,0,0,4,0,0,'1 owner since new','Clean history.','2026-08-26'),
+(9,0,'No accident record found',0,0,0,3,0,0,'1 owner since new','Showroom condition, all records available.','2026-08-28'),
+(10,0,'No accident record found',0,1,500,3,0,0,'1 owner since new','Clean history. One challan settled.','2026-08-30');
+
+INSERT INTO reviews (listing_id,order_id,author_id,target_user_id,reviewer_role,rating,title,comment,status) VALUES
+(2,1,2,4,'buyer',5,'Exactly as inspected','Car matched the 280-point report perfectly. RC transfer took 24 days.','approved'),
+(2,1,4,2,'seller',5,'Smooth buyer','Payment was instant and pickup was on schedule.','approved');
+
+INSERT INTO chat_threads (listing_id,buyer_id,seller_id,subject,status) VALUES
+(1,2,4,'2019 Hyundai Creta SX (O) Turbo enquiry','open');
+INSERT INTO chat_messages (thread_id,sender_id,body) VALUES
+(1,2,'Hi, is the Creta still available? Has the price room for negotiation?'),
+(1,4,'Yes, it is available. The car is certified - happy to discuss a fair offer on the platform.');
+
+INSERT INTO loan_applications (user_id,listing_id,lender,amount,tenure_months,rate,employment,monthly_income,status) VALUES
+(3,3,'HDFC Bank',780000,60,8.95,'Salaried',95000,'approved');
+
+INSERT INTO insurance_quotes (user_id,listing_id,insurer,idv,premium,addons,status) VALUES
+(2,1,'ICICI Lombard',1180000,28450,'Zero-dep, RSA','quoted');
+
+INSERT INTO escrow_ledger (order_id,kind,amount,note) VALUES
+(1,'hold',25000,'Booking amount held in escrow'),
+(1,'release',660000,'Balance released to seller after delivery'),
+(2,'hold',25000,'Booking amount held in escrow');
+
+INSERT INTO notifications (user_id,title,body,link) VALUES
+(2,'Test drive confirmed','Your Creta home test drive is confirmed for 14 Sep.','account.php'),
+(4,'New offer received','Meet offered Rs 11,90,000 on the Creta.','seller/offers.php');

@@ -11,9 +11,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $id = (int) ($_POST['id'] ?? 0);
     $status = (string) ($_POST['status'] ?? '');
     if ($id > 0 && in_array($status, $allowed, true)) {
-        $data = ['status' => $status];
-        if (isset($_POST['staff']) && $_POST['staff'] !== '') { $data['staff'] = trim((string) $_POST['staff']); }
-        updateRow('test_drives', $data, 'id = ?', [$id]);
+        updateRow('test_drives', ['status' => $status], 'id = ?', [$id]);
+        $td = fetchOne('SELECT * FROM test_drives WHERE id = ?', [$id]);
+        if ($td) { notify((int) $td['user_id'], 'Test drive ' . $status, 'Slot: ' . $td['slot_date'] . ', ' . $td['slot_time'], 'account.php'); }
         logActivity((int) $admin['id'], 'test_drives.updated', '#' . $id . ' -> ' . $status);
         flash('success', 'Record #' . $id . ' updated to ' . $status . '.');
     }
@@ -42,12 +42,11 @@ adminHeader('Test drive dispatch', 'testdrives');
       <td><?= e((string) ($r['customer'] . ' - ' . (string) $r['mobile'])) ?></td>
       <td><?= e((string) (ucfirst((string) $r['mode']))) ?></td>
       <td class="num"><?= e((string) (date('d M Y', strtotime((string) $r['slot_date'])) . ', ' . (string) $r['slot_time'])) ?></td>
-      <td><?= e((string) ((string) ($r['location'] ?? '-'))) ?></td>
+      <td><?= e((string) ((string) ($r['address'] ?? '-'))) ?></td>
       <td><?= statusBadge((string) $r[$statusCol]) ?></td>
       <td>
         <form method="post" style="display:flex;gap:6px;align-items:center">
           <?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
-          <input class="form-control" style="width:120px;padding:6px 8px" type="text" name="staff" placeholder="Staff assigned" value="<?= e((string) ($r['staff'] ?? '')) ?>">
           <select class="form-select" style="padding:6px 8px" name="status">
             <?php foreach ($allowed as $s): ?><option value="<?= e($s) ?>" <?= $r[$statusCol] === $s ? 'selected' : '' ?>><?= e(ucfirst(str_replace('_', ' ', $s))) ?></option><?php endforeach; ?>
           </select>

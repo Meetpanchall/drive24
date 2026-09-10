@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 $admin = requireLogin('admin');
 
 $statusCol = 'status';
-$allowed = ['open', 'in_progress', 'resolved', 'closed'];
+$allowed = ['open', 'processing', 'completed'];
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();

@@ -3,7 +3,74 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/listings.php';
 header('Content-Type: application/json');
 
-// Public read-only JSON feed of the MySQL inventory: api/listings.php?make=Kia&max=1500000
+// GET    /api/listings.php?make=Kia&max=1500000          search inventory
+// GET    /api/listings.php?id=3                          one listing + inspection + history + rating
+// POST   /api/listings.php  {vin,title...}               create (seller, -> pending)
+// PUT    /api/listings.php?id=3 {price,description}       update own listing
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+if ($method === 'GET' && isset($_GET['id'])) {
+    $car = dbReady() ? findListing((int) $_GET['id']) : null;
+    if (!$car) { apiJson(['ok' => false, 'message' => 'Listing not found.'], 404); }
+    $insp = fetchOne('SELECT * FROM inspections WHERE vehicle_id = ? ORDER BY id DESC', [(int) $car['vehicle_id']]);
+    $hist = fetchOne('SELECT * FROM vehicle_history WHERE vehicle_id = ?', [(int) $car['vehicle_id']]);
+    apiJson(['ok' => true, 'listing' => [
+        'listing_id' => (int) $car['id'], 'title' => vehicleTitle($car), 'make' => $car['make'],
+        'model' => $car['model'], 'year' => (int) $car['year'], 'mileage' => (int) $car['km_driven'],
+        'price' => (float) $car['price'], 'status' => $car['status'], 'fuel' => $car['fuel_type'],
+        'transmission' => $car['transmission'], 'city' => $car['city'], 'vin' => $car['vin'],
+        'inspection_score' => (int) $car['inspection_score'], 'rating' => listingRating((int) $car['id']),
+        'inspection' => $insp ? ['score' => (int) $insp['score'], 'status' => $insp['status']] : null,
+        'history' => $hist ? ['accidents' => (int) $hist['accidents'], 'challans' => (int) $hist['challans']] : null,
+    ]]);
+}
+
+if ($method === 'POST') {
+    $u = apiUser();
+    if ($u === null || !in_array($u['role'], ['seller', 'dealer', 'admin'], true)) {
+        apiJson(['ok' => false, 'message' => 'Seller sign-in required.'], 401);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    foreach (['make', 'model', 'year', 'price'] as $req) {
+        if (empty($in[$req])) { apiJson(['ok' => false, 'message' => "Field '$req' is required."], 422); }
+    }
+    $vin = trim((string) ($in['vin'] ?? ''));
+    $decoded = $vin !== '' ? vinDecode($vin) : ['make' => '', 'year' => null];
+    $vid = insert('vehicles', [
+        'make' => trim((string) $in['make'] ?: $decoded['make']), 'model' => trim((string) $in['model']),
+        'variant' => trim((string) ($in['variant'] ?? '')), 'year' => (int) $in['year'] ?: (int) ($decoded['year'] ?? date('Y')),
+        'body_type' => (string) ($in['body_type'] ?? 'SUV'),
+        'fuel_type' => in_array($in['fuel_type'] ?? '', ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'], true) ? $in['fuel_type'] : 'Petrol',
+        'transmission' => ($in['transmission'] ?? '') === 'Automatic' ? 'Automatic' : 'Manual',
+        'km_driven' => (int) ($in['km_driven'] ?? $in['mileage'] ?? 0), 'owners' => (int) ($in['owners'] ?? 1),
+        'color' => trim((string) ($in['color'] ?? '')), 'reg_number' => trim((string) ($in['reg_number'] ?? '')),
+        'vin' => $vin, 'city' => trim((string) ($in['city'] ?? $u['city'] ?? '')),
+        'description' => mb_substr(trim((string) ($in['description'] ?? '')), 0, 2000)]);
+    $lid = insert('listings', ['vehicle_id' => $vid, 'seller_id' => $u['id'],
+        'price' => (float) $in['price'], 'original_price' => (float) $in['price'],
+        'status' => 'pending', 'certified' => 0, 'inspection_score' => 0]);
+    apiJson(['ok' => true, 'listing_id' => $lid, 'status' => 'pending'], 201);
+}
+
+if ($method === 'PUT') {
+    $u = apiUser();
+    if ($u === null) { apiJson(['ok' => false, 'message' => 'Sign in required.'], 401); }
+    $car = dbReady() ? findListing((int) ($_GET['id'] ?? 0)) : null;
+    if (!$car || ((int) $car['seller_id'] !== (int) $u['id'] && $u['role'] !== 'admin')) {
+        apiJson(['ok' => false, 'message' => 'Listing not found.'], 404);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $data = [];
+    if (isset($in['price']) && (float) $in['price'] > 0) { $data['price'] = (float) $in['price']; }
+    if ($data === []) { apiJson(['ok' => false, 'message' => 'Nothing to update.'], 422); }
+    updateRow('listings', $data, 'id = ?', [(int) $car['id']]);
+    if (isset($in['description'])) {
+        updateRow('vehicles', ['description' => mb_substr((string) $in['description'], 0, 2000)], 'id = ?', [(int) $car['vehicle_id']]);
+    }
+    apiJson(['ok' => true, 'message' => 'Updated.']);
+}
+
+// Default: public search feed
 $filters = [
     'q' => (string) ($_GET['q'] ?? ''), 'make' => (string) ($_GET['make'] ?? ''),
     'body' => (string) ($_GET['body'] ?? ''), 'fuel' => (string) ($_GET['fuel'] ?? ''),

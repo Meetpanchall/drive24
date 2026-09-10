@@ -33,6 +33,8 @@ function renderHeader(string $title, string $active = ''): void
       <a class="icon-pill" href="<?= e(base('compare.php')) ?>">Compare <span class="count" data-compare-count><?= $cmp ?></span></a>
       <a class="icon-pill" href="<?= e(base('wishlist.php')) ?>">Saved <span class="count" data-wishlist-count><?= $wish ?></span></a>
       <?php if ($u): ?>
+        <a class="icon-pill" href="<?= e(base('chat.php')) ?>">Chat</a>
+        <a class="icon-pill" href="<?= e(base('notifications.php')) ?>" title="Notifications">&#128276; <span class="count"><?= $unread ?></span></a>
         <a class="icon-pill" href="<?= e(base('account.php')) ?>"><?= e(explode(' ', $u['name'])[0]) ?></a>
         <?php if (in_array($u['role'], ['seller', 'dealer'], true)): ?><a class="btn btn-outline btn-sm" href="<?= e(base('seller/dashboard.php')) ?>">Seller</a><?php endif; ?>
         <?php if ($u['role'] === 'admin'): ?><a class="btn btn-dark btn-sm" href="<?= e(base('admin/index.php')) ?>">Admin</a><?php endif; ?>
@@ -74,9 +76,10 @@ function renderFooter(): void
         <a href="<?= e(base('services.php')) ?>">RC transfer</a></div>
       <div><h4>Company</h4>
         <a href="<?= e(base('support.php')) ?>">Help centre</a><a href="<?= e(base('services.php')) ?>">Services</a>
-        <a href="<?= e(base('login.php')) ?>">Sign in</a></div>
+        <a href="<?= e(base('insurance.php')) ?>">Insurance</a><a href="<?= e(base('login.php')) ?>">Sign in</a></div>
     </div>
-    <div class="foot-bottom"><span>&copy; <?= date('Y') ?> DRIVE24 Technologies Pvt. Ltd.</span><span>Privacy &middot; Terms &middot; PCI-DSS aligned payments</span></div>
+    <div class="foot-bottom"><span>&copy; <?= date('Y') ?> DRIVE24 Technologies Pvt. Ltd.</span>
+      <span><a href="<?= e(base('terms.php')) ?>">Terms</a> &middot; <a href="<?= e(base('privacy.php')) ?>">Privacy</a> &middot; PCI-DSS aligned payments</span></div>
   </div>
 </footer>
 <div class="toast-host"></div>

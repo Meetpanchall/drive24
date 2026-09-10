@@ -121,11 +121,12 @@ function statusBadge(?string $status): string
     $status = (string) $status;
     $map = [
         'active' => 'ok', 'approved' => 'ok', 'paid' => 'ok', 'delivered' => 'ok', 'verified' => 'ok',
-        'completed' => 'ok', 'accepted' => 'ok', 'sold' => 'ok',
+        'completed' => 'ok', 'accepted' => 'ok', 'sold' => 'ok', 'disbursed' => 'ok', 'purchased' => 'ok',
         'pending' => 'warn', 'processing' => 'warn', 'scheduled' => 'warn', 'requested' => 'warn',
-        'in_transit' => 'warn', 'countered' => 'warn',
+        'in_transit' => 'warn', 'countered' => 'warn', 'quoted' => 'warn', 'under_review' => 'warn',
         'confirmed' => 'info', 'reserved' => 'info', 'draft' => 'info', 'open' => 'info', 'new' => 'info',
         'rejected' => 'bad', 'failed' => 'bad', 'cancelled' => 'bad', 'returned' => 'bad', 'suspended' => 'bad',
+        'flagged' => 'bad', 'expired' => 'bad',
     ];
     return '<span class="badge ' . ($map[$status] ?? 'info') . '">' . e(ucwords(str_replace('_', ' ', $status))) . '</span>';
 }
@@ -138,13 +139,16 @@ function vehicleTitle(array $row): string
 function listingImage(array $row): string
 {
     $img = trim((string) ($row['image'] ?? ''));
-    return base('assets/img/' . ($img !== '' ? $img : 'car1.jpg'));
+    if ($img === '') { $img = 'car1.jpg'; }
+    if (str_starts_with($img, 'uploads/')) { return base('assets/' . $img); }
+    return base('assets/img/' . $img);
 }
 
 function listingThumb(array $row): string
 {
     $img = trim((string) ($row['image'] ?? ''));
-    $img = $img !== '' ? $img : 'car1.jpg';
+    if ($img === '') { $img = 'car1.jpg'; }
+    if (str_starts_with($img, 'uploads/')) { return base('assets/' . $img); }
     $thumb = __DIR__ . '/../assets/img/thumbs/' . $img;
     return base('assets/img/' . (is_file($thumb) ? 'thumbs/' . $img : $img));
 }
@@ -160,4 +164,167 @@ function emiAmount(float $principal, float $ratePct, int $months): float
 function refCode(string $prefix, int $id): string
 {
     return $prefix . '-' . str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+}
+
+/* ---------------- SRS helpers: notifications, chat safety, VIN, uploads, ratings ---------------- */
+
+function notify(int $userId, string $title, string $body = '', string $link = ''): void
+{
+    if ($userId <= 0 || !dbReady()) { return; }
+    try { insert('notifications', ['user_id' => $userId, 'title' => $title, 'body' => $body, 'link' => $link]); }
+    catch (Throwable $e) { /* notifications must never break a request */ }
+}
+
+function unreadNotifications(): int
+{
+    $u = user();
+    if ($u === null || !dbReady()) { return 0; }
+    try { return (int) fetchValue('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0', [$u['id']], 0); }
+    catch (Throwable $e) { return 0; }
+}
+
+/** Fraud / spam keywords flagged in chat (SRS: fraud-resistant messaging). */
+function fraudWords(): array
+{
+    return ['wire transfer', 'western union', 'advance fee', 'gift card', 'otp', 'upi pin',
+        'account number', 'cvv', 'password', 'outside the platform', 'direct payment'];
+}
+
+function containsFraud(string $text): bool
+{
+    $t = strtolower($text);
+    foreach (fraudWords() as $w) { if (str_contains($t, $w)) { return true; } }
+    return (bool) preg_match('/\b\d{6,}\b/', $t);
+}
+
+/**
+ * Masks phone numbers and e-mail addresses in chat until buyer and seller
+ * are connected through an order/offer (SRS: hidden contact details).
+ */
+function maskContact(string $text, bool $connected): string
+{
+    if ($connected) { return $text; }
+    $text = (string) preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[contact hidden]', $text);
+    return (string) preg_replace('/(\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}/', '[phone hidden]', $text);
+}
+
+/** Offline VIN decoder (WMI + year-code tables, stands in for a VIN API). */
+function vinDecode(string $vin): array
+{
+    $vin = strtoupper(trim($vin));
+    $out = ['vin' => $vin, 'valid' => false, 'make' => '', 'country' => 'India', 'year' => null];
+    if (!preg_match('/^[A-HJ-NPR-Z0-9]{17}$/', $vin)) { return $out; }
+    $wmi = substr($vin, 0, 3);
+    $makes = [
+        'MAL' => 'Hyundai', 'MA3' => 'Maruti Suzuki', 'MAK' => 'Honda', 'MAT' => 'Tata',
+        'MA1' => 'Mahindra', 'MBJ' => 'Toyota', 'MZB' => 'Kia', 'MEX' => 'Skoda',
+        'MEE' => 'Renault', 'MEC' => 'Mercedes-Benz', 'WBA' => 'BMW', 'WDD' => 'Mercedes-Benz',
+        'WAU' => 'Audi', 'SAL' => 'Land Rover', 'VF1' => 'Renault',
+    ];
+    $years = ['A' => 2010, 'B' => 2011, 'C' => 2012, 'D' => 2013, 'E' => 2014, 'F' => 2015,
+        'G' => 2016, 'H' => 2017, 'J' => 2018, 'K' => 2019, 'L' => 2020, 'M' => 2021,
+        'N' => 2022, 'P' => 2023, 'R' => 2024, 'S' => 2025, 'T' => 2026];
+    $out['valid'] = true;
+    $out['make'] = $makes[$wmi] ?? '';
+    $out['country'] = str_starts_with($wmi, 'M') ? 'India' : 'Imported';
+    $out['year'] = $years[$vin[9] ?? ''] ?? null;
+    return $out;
+}
+
+/** Average approved rating received by a seller (buyers only). */
+function sellerRating(int $sellerId): array
+{
+    if (!dbReady()) { return ['avg' => 0.0, 'count' => 0]; }
+    try {
+        $row = fetchOne("SELECT COALESCE(AVG(rating),0) AS avg, COUNT(*) AS c FROM reviews
+            WHERE target_user_id = ? AND reviewer_role = 'buyer' AND status = 'approved'", [$sellerId]);
+        return ['avg' => round((float) ($row['avg'] ?? 0), 1), 'count' => (int) ($row['c'] ?? 0)];
+    } catch (Throwable $e) { return ['avg' => 0.0, 'count' => 0]; }
+}
+
+function listingRating(int $listingId): array
+{
+    if (!dbReady()) { return ['avg' => 0.0, 'count' => 0]; }
+    try {
+        $row = fetchOne("SELECT COALESCE(AVG(rating),0) AS avg, COUNT(*) AS c FROM reviews
+            WHERE listing_id = ? AND reviewer_role = 'buyer' AND status = 'approved'", [$listingId]);
+        return ['avg' => round((float) ($row['avg'] ?? 0), 1), 'count' => (int) ($row['c'] ?? 0)];
+    } catch (Throwable $e) { return ['avg' => 0.0, 'count' => 0]; }
+}
+
+/** Gallery images for a listing: uploaded photos first, then the cover image. */
+function listingGallery(array $row): array
+{
+    $out = [];
+    if (dbReady()) {
+        try {
+            foreach (fetchAll('SELECT image, label FROM listing_images WHERE listing_id = ? ORDER BY sort_order, id', [(int) $row['id']]) as $img) {
+                $out[] = ['src' => base('assets/uploads/' . $img['image']), 'label' => (string) ($img['label'] ?? '')];
+            }
+        } catch (Throwable $e) { /* gallery is optional */ }
+    }
+    if ($out === []) {
+        $out[] = ['src' => listingImage($row), 'label' => 'Cover photo'];
+    }
+    return $out;
+}
+
+/** Validate + move an uploaded image into assets/uploads, returns stored file name. */
+function saveUpload(array $file, string $prefix = 'img'): ?string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) { return null; }
+    if ((int) ($file['size'] ?? 0) > 4 * 1024 * 1024) { return null; }
+    $info = @getimagesize((string) ($file['tmp_name'] ?? ''));
+    if ($info === false) { return null; }
+    $ext = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'][$info['mime'] ?? ''] ?? null;
+    if ($ext === null) { return null; }
+    $dir = __DIR__ . '/../assets/uploads';
+    if (!is_dir($dir)) { @mkdir($dir, 0755, true); }
+    $name = $prefix . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    return move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $name) ? $name : null;
+}
+
+/** Store an uploaded document (image or PDF) for KYC / vault. */
+function saveDocument(array $file, string $prefix = 'doc'): ?string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) { return null; }
+    if ((int) ($file['size'] ?? 0) > 8 * 1024 * 1024) { return null; }
+    $dir = __DIR__ . '/../assets/uploads';
+    if (!is_dir($dir)) { @mkdir($dir, 0755, true); }
+    $safe = (string) preg_replace('/[^a-zA-Z0-9._-]/', '_', (string) ($file['name'] ?? 'file'));
+    $ext = strtolower((string) pathinfo($safe, PATHINFO_EXTENSION));
+    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'pdf'], true)) { return null; }
+    $name = $prefix . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    return move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $name) ? $name : null;
+}
+
+/** Signed API token (HMAC) for JSON clients; sessions remain the primary auth. */
+function apiToken(int $userId): string
+{
+    $exp = time() + 7 * 86400;
+    $body = $userId . '.' . $exp;
+    return $body . '.' . hash_hmac('sha256', $body, csrfToken());
+}
+
+/** Authenticate a JSON request via session cookie or `Authorization: Bearer` token. */
+function apiUser(): ?array
+{
+    $u = user();
+    if ($u !== null) { return $u; }
+    $hdr = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    if (!str_starts_with($hdr, 'Bearer ') || !dbReady()) { return null; }
+    $parts = explode('.', substr($hdr, 7));
+    if (count($parts) !== 3) { return null; }
+    [$id, $exp, $sig] = $parts;
+    if ((int) $exp < time()) { return null; }
+    if (!hash_equals(hash_hmac('sha256', $id . '.' . $exp, csrfToken()), $sig)) { return null; }
+    return fetchOne('SELECT id, name, email, mobile, role, city, kyc_status FROM users WHERE id = ? AND status = "active"', [(int) $id]);
+}
+
+function apiJson(mixed $data, int $code = 200): void
+{
+    http_response_code($code);
+    header('Content-Type: application/json');
+    echo json_encode($data, JSON_PRETTY_PRINT);
+    exit;
 }

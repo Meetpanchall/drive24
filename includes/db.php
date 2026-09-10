@@ -30,7 +30,56 @@ function dbReady(): bool
     if ($ready !== null) { return $ready; }
     try { db()->query('SELECT 1 FROM users LIMIT 1'); $ready = true; }
     catch (Throwable $e) { $GLOBALS['db_error'] = $e->getMessage(); $ready = false; }
+    if ($ready) { ensureExtendedSchema(); }
     return $ready;
+}
+
+/**
+ * Bring older installs up to date: creates the SRS extension tables
+ * (chat, reviews, loans, ...) exactly once per request when missing.
+ */
+function ensureExtendedSchema(): void
+{
+    static $done = false;
+    if ($done) { return; }
+    $done = true;
+    try {
+        $dbName = config('db')['name'] ?? 'drive24';
+        $has = (int) fetchValue(
+            'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?',
+            [$dbName, 'reviews'], 0
+        );
+        if ($has === 0) {
+            $sql = (string) @file_get_contents(__DIR__ . '/../database/migrate.sql');
+            $lines = [];
+            foreach (explode("\n", $sql) as $line) {
+                if (str_starts_with(ltrim($line), '--')) { continue; }
+                $lines[] = $line;
+            }
+            foreach (preg_split('/;\s*\n/', implode("\n", $lines)) as $stmt) {
+                $stmt = trim($stmt);
+                if ($stmt === '') { continue; }
+                db()->exec($stmt);
+            }
+            // Backfill a clean history row for vehicles imported before this release.
+            db()->exec("INSERT IGNORE INTO vehicle_history (vehicle_id, service_records, owners_history, report_summary, checked_on)
+                SELECT v.id, 3, CONCAT(v.owners, ' owner(s) as per RC'), 'History check pending - basic RC verification done.', CURDATE() FROM vehicles v");
+        }
+        $col = (int) fetchValue(
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'users' AND column_name = 'mobile_verified'",
+            [$dbName], 0
+        );
+        if ($col === 0) {
+            db()->exec('ALTER TABLE users ADD COLUMN mobile_verified TINYINT(1) NOT NULL DEFAULT 0 AFTER kyc_status');
+        }
+        $doc = (int) fetchValue(
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'documents' AND column_name = 'file_url'",
+            [$dbName], 0
+        );
+        if ($doc === 0) {
+            db()->exec('ALTER TABLE documents ADD COLUMN file_url VARCHAR(160) DEFAULT NULL AFTER doc_name');
+        }
+    } catch (Throwable $e) { /* never break a request for a migration */ }
 }
 
 function q(string $sql, array $params = []): PDOStatement

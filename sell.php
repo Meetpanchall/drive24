@@ -36,6 +36,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if ($action === 'listing') {
         $u = requireLogin();
+        if (empty($_POST['odometer_ok'])) {
+            flash('error', 'Please confirm the signed odometer disclosure to list your car.');
+            redirect(base('sell.php'));
+        }
+        // Upload gallery photos first (front, rear, interior, odo, VIN plate...)
+        $uploaded = [];
+        if (!empty($_FILES['photos']['name'][0] ?? '')) {
+            $labels = ['Front three-quarter', 'Rear three-quarter', 'Interior', 'Odometer', 'VIN plate', 'Engine bay', 'Tyres', 'Extra'];
+            foreach ($_FILES['photos']['name'] as $i => $nm) {
+                if ($i >= 8) { break; }
+                $f = ['name' => $nm, 'type' => $_FILES['photos']['type'][$i], 'tmp_name' => $_FILES['photos']['tmp_name'][$i],
+                    'error' => $_FILES['photos']['error'][$i], 'size' => $_FILES['photos']['size'][$i]];
+                $saved = saveUpload($f, 'car');
+                if ($saved !== null) { $uploaded[] = ['file' => $saved, 'label' => $labels[$i] ?? 'Photo ' . ($i + 1)]; }
+            }
+        }
         $vehicleId = insert('vehicles', [
             'make' => trim((string) $_POST['make']), 'model' => trim((string) $_POST['model']),
             'variant' => trim((string) ($_POST['variant'] ?? '')), 'year' => (int) $_POST['year'],
@@ -46,7 +62,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'vin' => trim((string) ($_POST['vin'] ?? '')), 'engine_cc' => (int) ($_POST['engine_cc'] ?? 0),
             'power_bhp' => trim((string) ($_POST['power_bhp'] ?? '')), 'mileage_kmpl' => (float) ($_POST['mileage_kmpl'] ?? 0),
             'seats' => (int) ($_POST['seats'] ?? 5), 'city' => trim((string) ($_POST['city'] ?? '')),
-            'image' => 'car' . random_int(1, 6) . '.svg',
+            'image' => $uploaded !== [] ? 'uploads/' . $uploaded[0]['file'] : 'car' . random_int(1, 6) . '.svg',
             'description' => trim((string) ($_POST['description'] ?? '')),
         ]);
         $created = insert('listings', [
@@ -54,8 +70,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'price' => (float) $_POST['price'], 'original_price' => (float) $_POST['price'],
             'status' => 'pending', 'certified' => 0, 'inspection_score' => 0,
         ]);
+        foreach ($uploaded as $i => $ph) {
+            insert('listing_images', ['listing_id' => $created, 'image' => $ph['file'], 'label' => $ph['label'], 'sort_order' => $i]);
+        }
         logActivity((int) $u['id'], 'listing.created', 'Listing #' . $created);
-        flash('success', 'Listing submitted. It goes live as soon as our team approves it.');
+        flash('success', 'Listing submitted with ' . count($uploaded) . ' photo(s). It goes live as soon as our team approves it.');
         redirect(base('seller/listings.php'));
     }
 }
@@ -105,12 +124,20 @@ renderHeader('Sell your car', 'sell');
         <?php if (user() === null): ?>
           <div class="alert info">Please <a href="<?= e(base('login.php')) ?>">sign in</a> or <a href="<?= e(base('register.php')) ?>">create a seller account</a> to publish a listing.</div>
         <?php endif; ?>
-        <form method="post" class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px">
+        <form method="post" enctype="multipart/form-data" class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px" id="listingForm">
           <?= csrfField() ?><input type="hidden" name="action" value="listing">
-          <div><label class="form-label">Brand</label><input class="form-control" name="make" required></div>
+          <div style="grid-column:1/-1" class="card card-pad" data-vin-box>
+            <label class="form-label">VIN / chassis number (auto-fills brand &amp; year)</label>
+            <div style="display:flex;gap:8px">
+              <input class="form-control" name="vin" data-vin-input placeholder="17 characters, e.g. MALC281CLNM100231" maxlength="17" style="flex:1;text-transform:uppercase">
+              <button class="btn btn-outline" type="button" data-vin-decode>Decode VIN</button>
+            </div>
+            <small class="muted" data-vin-out>Powered by the VIN-decoding API (api/vin.php).</small>
+          </div>
+          <div><label class="form-label">Brand</label><input class="form-control" name="make" data-vin-make required></div>
           <div><label class="form-label">Model</label><input class="form-control" name="model" required></div>
           <div><label class="form-label">Variant</label><input class="form-control" name="variant"></div>
-          <div><label class="form-label">Year</label><input class="form-control num" type="number" name="year" required></div>
+          <div><label class="form-label">Year</label><input class="form-control num" type="number" name="year" data-vin-year required></div>
           <div><label class="form-label">Body type</label><select class="form-select" name="body_type"><option>Hatchback</option><option>Sedan</option><option>SUV</option><option>MUV</option><option>Luxury</option></select></div>
           <div><label class="form-label">Fuel</label><select class="form-select" name="fuel_type"><option>Petrol</option><option>Diesel</option><option>CNG</option><option>Electric</option><option>Hybrid</option></select></div>
           <div><label class="form-label">Transmission</label><select class="form-select" name="transmission"><option>Manual</option><option>Automatic</option></select></div>

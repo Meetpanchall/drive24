@@ -39,6 +39,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'amount'   => $booking,
             'status'   => 'paid',
         ]);
+        insert('escrow_ledger', [
+            'order_id' => $orderId, 'kind' => 'hold', 'amount' => $booking,
+            'note' => 'Booking held in DRIVE24 escrow - released to seller after delivery',
+        ]);
         q("UPDATE listings SET status = 'reserved' WHERE id = ?", [$listingId]);
         insert('payouts', ['seller_id' => (int) $car['seller_id'], 'order_id' => $orderId, 'amount' => (float) $car['price'] * 0.96, 'status' => 'pending']);
         $pdo->commit();

@@ -103,3 +103,75 @@
     el.addEventListener('change', function () { el.form.submit(); });
   });
 })();
+
+/* SRS additions: gallery, VIN decode, chat polling, copy link */
+(function () {
+  var body = document.body;
+  var BASE = (body.getAttribute('data-base') || '').replace(/\/$/, '');
+
+  // photo gallery on car page
+  document.querySelectorAll('[data-gal]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var main = document.getElementById('galMain');
+      if (main) { main.src = btn.getAttribute('data-gal'); }
+      document.querySelectorAll('[data-gal]').forEach(function (b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+    });
+  });
+
+  // copy-link buttons
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var v = btn.getAttribute('data-copy') || location.href;
+      if (navigator.clipboard) { navigator.clipboard.writeText(v); }
+      btn.textContent = 'Copied!';
+      setTimeout(function () { btn.textContent = 'Copy link'; }, 1600);
+    });
+  });
+
+  // VIN decode on sell page
+  var vinBtn = document.querySelector('[data-vin-decode]');
+  if (vinBtn) {
+    vinBtn.addEventListener('click', function () {
+      var box = vinBtn.closest('[data-vin-box]');
+      var input = box ? box.querySelector('[data-vin-input]') : null;
+      var out = box ? box.querySelector('[data-vin-out]') : null;
+      var vin = input ? input.value.trim() : '';
+      if (vin.length !== 17) { if (out) { out.textContent = 'VIN must be exactly 17 characters.'; } return; }
+      fetch(BASE + '/api/vin.php?vin=' + encodeURIComponent(vin))
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (!res.ok) { if (out) { out.textContent = res.message || 'Invalid VIN.'; } return; }
+          var form = document.getElementById('listingForm');
+          if (res.make && form) { var mk = form.querySelector('[data-vin-make]'); if (mk && !mk.value) { mk.value = res.make; } }
+          if (res.year && form) { var yr = form.querySelector('[data-vin-year]'); if (yr && !yr.value) { yr.value = res.year; } }
+          if (out) { out.textContent = 'Decoded: ' + (res.make || 'unknown make') + (res.year ? ' - ' + res.year : '') + ' (' + res.country + ').'; }
+        })
+        .catch(function () { if (out) { out.textContent = 'VIN service unreachable, please type details manually.'; } });
+    });
+  }
+
+  // chat auto-refresh: poll for messages newer than data-last every 6s
+  var log = document.getElementById('chatLog');
+  if (log) {
+    log.scrollTop = log.scrollHeight;
+    var thread = log.getAttribute('data-thread');
+    setInterval(function () {
+      var last = log.getAttribute('data-last') || '0';
+      fetch(BASE + '/api/chat.php?thread=' + thread + '&after=' + last, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) {
+          if (!res || !res.ok || !res.messages.length) { return; }
+          res.messages.forEach(function (m) {
+            var d = document.createElement('div');
+            d.className = 'bubble';
+            d.textContent = m.body;
+            log.appendChild(d);
+            log.setAttribute('data-last', m.id);
+          });
+          log.scrollTop = log.scrollHeight;
+        })
+        .catch(function () {});
+    }, 6000);
+  }
+})();

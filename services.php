@@ -5,13 +5,28 @@ $u = user();
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
     $u = requireLogin();
-    insert('documents', [
-        'user_id' => $u['id'],
-        'doc_type' => (string) ($_POST['doc_type'] ?? 'rc'),
-        'doc_name' => trim((string) ($_POST['doc_name'] ?? 'Service request')),
-        'status' => 'pending',
-    ]);
-    flash('success', 'Service request created. Track it in your document vault below.');
+    $kind = (string) ($_POST['kind'] ?? 'service');
+    if ($kind === 'kyc') {
+        $file = !empty($_FILES['doc_file']['name'] ?? '') ? saveDocument($_FILES['doc_file'], 'kyc') : null;
+        insert('documents', [
+            'user_id' => $u['id'],
+            'doc_type' => 'kyc',
+            'doc_name' => trim((string) ($_POST['id_type'] ?? 'ID proof')) . ' - ' . trim((string) ($_POST['id_number'] ?? '')),
+            'file_url' => $file,
+            'status' => 'pending',
+        ]);
+        flash('success', 'KYC document uploaded. Compliance usually verifies within 24 hours.');
+    } else {
+        $file = !empty($_FILES['doc_file']['name'] ?? '') ? saveDocument($_FILES['doc_file'], 'doc') : null;
+        insert('documents', [
+            'user_id' => $u['id'],
+            'doc_type' => (string) ($_POST['doc_type'] ?? 'rc'),
+            'doc_name' => trim((string) ($_POST['doc_name'] ?? 'Service request')),
+            'file_url' => $file,
+            'status' => 'pending',
+        ]);
+        flash('success', 'Service request created. Track it in your document vault below.');
+    }
     redirect(base('services.php'));
 }
 
@@ -44,24 +59,35 @@ renderHeader('RTO and ownership services', 'services');
   <div class="split-3">
     <div class="card card-pad">
       <h2 style="font-size:1.15rem">Request a service</h2>
-      <form method="post" class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
-        <?= csrfField() ?>
+      <form method="post" enctype="multipart/form-data" class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <?= csrfField() ?><input type="hidden" name="kind" value="service">
         <div><label class="form-label">Service</label><select class="form-select" name="doc_type">
           <option value="rc">RC transfer</option><option value="insurance">Insurance transfer</option>
           <option value="noc">NOC / re-registration</option><option value="duplicate_rc">Duplicate RC</option>
           <option value="hypothecation">Hypothecation removal</option><option value="inspection">Doorstep inspection</option>
         </select></div>
         <div><label class="form-label">Reference / vehicle number</label><input class="form-control" name="doc_name" placeholder="MH01AB1234 - RC transfer" required></div>
+        <div style="grid-column:1/-1"><label class="form-label">Attach RC / supporting document (PDF or image, max 8 MB)</label><input class="form-control" type="file" name="doc_file" accept=".pdf,.jpg,.jpeg,.png,.webp"></div>
         <div style="grid-column:1/-1"><button class="btn btn-primary" type="submit">Submit request</button></div>
+      </form>
+
+      <h2 style="font-size:1.15rem;margin-top:22px">KYC verification</h2>
+      <form method="post" enctype="multipart/form-data" class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <?= csrfField() ?><input type="hidden" name="kind" value="kyc">
+        <div><label class="form-label">ID type</label><select class="form-select" name="id_type"><option>PAN card</option><option>Aadhaar card</option><option>Dealer licence</option><option>Driving licence</option></select></div>
+        <div><label class="form-label">ID number</label><input class="form-control" name="id_number" placeholder="ABCDE1234F" required></div>
+        <div style="grid-column:1/-1"><label class="form-label">Upload scan (PDF or image)</label><input class="form-control" type="file" name="doc_file" accept=".pdf,.jpg,.jpeg,.png,.webp" required></div>
+        <div style="grid-column:1/-1"><button class="btn btn-dark" type="submit">Upload KYC</button></div>
       </form>
 
       <h2 style="font-size:1.15rem;margin-top:22px">My document vault</h2>
       <?php if (!$docs): ?><p class="muted">Sign in to see your RC, invoices, KYC and loan documents here.</p><?php endif; ?>
       <?php if ($docs): ?>
         <div class="table-wrap" style="border:0"><table class="data">
-          <thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Created</th></tr></thead>
+          <thead><tr><th>Document</th><th>Type</th><th>File</th><th>Status</th><th>Created</th></tr></thead>
           <tbody><?php foreach ($docs as $d): ?>
             <tr><td><?= e($d['doc_name']) ?></td><td><?= e(strtoupper((string) $d['doc_type'])) ?></td>
+              <td><?= !empty($d['file_url']) ? '<a target="_blank" href="' . e(base('assets/uploads/' . $d['file_url'])) . '">View</a>' : '<span class="muted">-</span>' ?></td>
               <td><?= statusBadge((string) $d['status']) ?></td>
               <td class="num"><?= e(date('d M Y', strtotime((string) $d['created_at']))) ?></td></tr>
           <?php endforeach; ?></tbody></table></div>

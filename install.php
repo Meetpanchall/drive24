@@ -11,7 +11,9 @@ $connected = dbReady();
 $steps[] = ['MySQL connection (' . config('db_host') . ':' . config('db_port') . '/' . config('db_name') . ')', $connected];
 
 $tables = ['users', 'vehicles', 'listings', 'wishlists', 'saved_searches', 'offers', 'test_drives',
-    'inspections', 'orders', 'payments', 'payouts', 'documents', 'leads', 'support_tickets', 'activity_log'];
+    'inspections', 'orders', 'payments', 'payouts', 'documents', 'leads', 'support_tickets', 'activity_log',
+    'listing_images', 'reviews', 'chat_threads', 'chat_messages', 'loan_applications', 'insurance_quotes',
+    'inspection_bookings', 'vehicle_history', 'notifications', 'password_resets', 'otp_codes', 'escrow_ledger'];
 $missing = [];
 if ($connected) {
     foreach ($tables as $t) {
@@ -65,5 +67,17 @@ if ($connected && $missing === [] && ($_GET['rehash'] ?? '') === '1') {
     <div class="kv"><span>admin@drive24.in</span><span>Admin console</span></div>
     <div class="kv"><span>seller@drive24.in</span><span>Dealer portal</span></div>
     <div class="kv"><span>meet@example.com</span><span>Buyer</span></div>
+  </div>
+
+  <div class="card card-pad" style="margin-top:16px">
+    <h3 style="font-size:1.02rem">Upgrading an older install?</h3>
+    <p class="muted">Just reload any page: missing SRS tables (chat, reviews, loans, escrow...) are created automatically from <code>database/migrate.sql</code>. No data is touched.</p>
+    <h3 style="font-size:1.02rem;margin-top:14px">JSON API (SRS endpoints)</h3>
+    <div class="kv"><span><code>api/auth.php?action=signup|login</code></span><span>register + token login</span></div>
+    <div class="kv"><span><code>api/listings.php / ?id=3</code></span><span>search, detail, create, update</span></div>
+    <div class="kv"><span><code>api/offers.php, api/testdrives.php</code></span><span>negotiation + slots</span></div>
+    <div class="kv"><span><code>api/checkout.php, api/chat.php, api/reviews.php</code></span><span>orders, messages, ratings</span></div>
+    <div class="kv"><span><code>api/vin.php?vin=...</code></span><span>VIN decoding</span></div>
+    <div class="kv"><span><code>api/admin.php?view=pending|stats</code></span><span>admin (token + role)</span></div>
   </div>
 </div></body></html>

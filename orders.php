@@ -21,7 +21,7 @@ renderHeader('My orders', '');
   <div class="grid" style="grid-template-columns:1fr">
     <?php foreach ($orders as $o): ?>
       <div class="card card-pad" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-        <img src="<?= e(base('assets/img/' . $o['image'])) ?>" alt="" style="width:150px;height:94px;object-fit:cover;border-radius:10px">
+        <img src="<?= e(listingImage($o)) ?>" alt="" style="width:150px;height:94px;object-fit:cover;border-radius:10px">
         <div style="flex:1;min-width:190px">
           <b><?= e($o['year'] . ' ' . $o['make'] . ' ' . $o['model']) ?></b>
           <div class="muted num" style="font-size:13px">Order <?= e($o['order_no']) ?> &middot; placed <?= e(date('d M Y', strtotime((string) $o['created_at']))) ?></div>

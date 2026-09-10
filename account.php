@@ -6,30 +6,52 @@ $u = requireLogin();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
-    updateRow('users', [
-        'name'   => trim((string) ($_POST['name'] ?? $u['name'])),
-        'mobile' => trim((string) ($_POST['mobile'] ?? '')),
-        'city'   => trim((string) ($_POST['city'] ?? '')),
-    ], 'id = ?', [$u['id']]);
-    flash('success', 'Profile updated in the database.');
+    $action = (string) ($_POST['action'] ?? 'profile');
+    if ($action === 'profile') {
+        updateRow('users', [
+            'name'   => trim((string) ($_POST['name'] ?? $u['name'])),
+            'mobile' => trim((string) ($_POST['mobile'] ?? '')),
+            'city'   => trim((string) ($_POST['city'] ?? '')),
+        ], 'id = ?', [$u['id']]);
+        flash('success', 'Profile updated in the database.');
+    } elseif ($action === 'search_toggle') {
+        q('UPDATE saved_searches SET alert_enabled = 1 - alert_enabled WHERE id = ? AND user_id = ?', [(int) ($_POST['id'] ?? 0), $u['id']]);
+        flash('success', 'Search alert preference saved.');
+    } elseif ($action === 'search_delete') {
+        q('DELETE FROM saved_searches WHERE id = ? AND user_id = ?', [(int) ($_POST['id'] ?? 0), $u['id']]);
+        flash('success', 'Saved search deleted.');
+    }
     redirect(base('account.php'));
 }
 
 $orders = fetchAll('SELECT o.*, v.make, v.model, v.year FROM orders o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE o.buyer_id = ? ORDER BY o.created_at DESC', [$u['id']]);
 $drives = fetchAll('SELECT t.*, v.make, v.model FROM test_drives t JOIN listings l ON l.id = t.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE t.user_id = ? ORDER BY t.slot_date DESC', [$u['id']]);
 $myOffers = fetchAll('SELECT o.*, v.make, v.model FROM offers o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE o.buyer_id = ? ORDER BY o.created_at DESC', [$u['id']]);
+$searches = fetchAll('SELECT * FROM saved_searches WHERE user_id = ? ORDER BY created_at DESC', [$u['id']]);
+$loans = [];
+$quotes = [];
+$inspections = [];
+$chats = 0;
+try {
+    $loans = fetchAll('SELECT a.*, v.make, v.model FROM loan_applications a JOIN listings l ON l.id = a.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE a.user_id = ? ORDER BY a.id DESC', [$u['id']]);
+    $quotes = fetchAll('SELECT q.*, v.make, v.model FROM insurance_quotes q JOIN listings l ON l.id = q.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE q.user_id = ? ORDER BY q.id DESC', [$u['id']]);
+    $inspections = fetchAll('SELECT b.*, v.make, v.model FROM inspection_bookings b JOIN listings l ON l.id = b.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE b.user_id = ? ORDER BY b.id DESC', [$u['id']]);
+    $chats = (int) fetchValue('SELECT COUNT(*) FROM chat_threads WHERE buyer_id = ? OR seller_id = ?', [$u['id'], $u['id']], 0);
+} catch (Throwable $e) { /* extension tables self-create on next request */ }
 $saved = count(wishlistIds());
 
 renderHeader('My account', '');
 ?>
 <div class="wrap section">
   <h1 style="font-size:1.6rem">Hello, <?= e($u['name']) ?></h1>
-  <p class="muted">Role: <?= e(ucfirst($u['role'])) ?> &middot; KYC <?= statusBadge((string) $u['kyc_status']) ?></p>
+  <p class="muted">Role: <?= e(ucfirst($u['role'])) ?> &middot; KYC <?= statusBadge((string) $u['kyc_status']) ?>
+    <?php if (!((int) ($u['mobile_verified'] ?? 0))): ?> &middot; <a href="<?= e(base('verify-otp.php')) ?>">Verify mobile</a><?php endif; ?></p>
   <div class="kpis" style="margin-top:16px">
     <div class="kpi"><small>Orders</small><b class="num"><?= count($orders) ?></b></div>
     <div class="kpi"><small>Saved cars</small><b class="num"><?= $saved ?></b></div>
     <div class="kpi"><small>Test drives</small><b class="num"><?= count($drives) ?></b></div>
     <div class="kpi"><small>Offers sent</small><b class="num"><?= count($myOffers) ?></b></div>
+    <div class="kpi"><small>Conversations</small><b class="num"><?= $chats ?></b></div>
   </div>
 
   <div class="split-3">
@@ -71,12 +93,58 @@ renderHeader('My account', '');
             <td><?= statusBadge((string) $o['status']) ?></td></tr>
         <?php endforeach; ?>
         </tbody></table></div>
+
+      <h2 style="font-size:1.2rem;margin-top:24px">Saved searches &amp; alerts</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Search</th><th>Alerts</th><th></th></tr></thead>
+        <tbody>
+        <?php if (!$searches): ?><tr><td colspan="3" class="empty">No saved searches. Save any filter set from the <a href="<?= e(base('cars.php')) ?>">cars page</a>.</td></tr><?php endif; ?>
+        <?php foreach ($searches as $s): ?>
+          <tr><td><a href="<?= e(base('cars.php?' . $s['query_string'])) ?>"><?= e($s['title']) ?></a></td>
+            <td><?= ((int) $s['alert_enabled'] ? statusBadge('verified') : statusBadge('pending')) ?></td>
+            <td style="white-space:nowrap">
+              <form method="post" style="display:inline"><?= csrfField() ?><input type="hidden" name="action" value="search_toggle"><input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
+                <button class="btn btn-ghost btn-sm"><?= (int) $s['alert_enabled'] ? 'Mute' : 'Unmute' ?></button></form>
+              <form method="post" style="display:inline" onsubmit="return confirm('Delete this saved search?')"><?= csrfField() ?><input type="hidden" name="action" value="search_delete"><input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
+                <button class="btn btn-ghost btn-sm">Delete</button></form></td></tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+
+      <?php if ($loans): ?>
+      <h2 style="font-size:1.2rem;margin-top:24px">Loan applications</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Ref</th><th>Lender</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody><?php foreach ($loans as $ln): ?>
+          <tr><td class="num"><?= e(refCode('LN', (int) $ln['id'])) ?></td><td><?= e($ln['lender']) ?> <small class="muted">(<?= e($ln['make'] . ' ' . $ln['model']) ?>)</small></td>
+            <td class="num"><?= rupees($ln['amount']) ?></td><td><?= statusBadge((string) $ln['status']) ?></td></tr>
+        <?php endforeach; ?></tbody></table></div>
+      <?php endif; ?>
+
+      <?php if ($quotes): ?>
+      <h2 style="font-size:1.2rem;margin-top:24px">Insurance policies</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Ref</th><th>Insurer</th><th>Premium</th><th>Status</th></tr></thead>
+        <tbody><?php foreach ($quotes as $qt): ?>
+          <tr><td class="num"><?= e(refCode('IN', (int) $qt['id'])) ?></td><td><?= e($qt['insurer']) ?></td>
+            <td class="num"><?= rupees($qt['premium']) ?></td><td><?= statusBadge((string) $qt['status']) ?></td></tr>
+        <?php endforeach; ?></tbody></table></div>
+      <?php endif; ?>
+
+      <?php if ($inspections): ?>
+      <h2 style="font-size:1.2rem;margin-top:24px">My inspections</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Ref</th><th>Car</th><th>Slot</th><th>Status</th></tr></thead>
+        <tbody><?php foreach ($inspections as $b): ?>
+          <tr><td class="num"><?= e(refCode('INSP', (int) $b['id'])) ?></td><td><?= e($b['make'] . ' ' . $b['model']) ?></td>
+            <td class="num"><?= e(date('d M Y', strtotime((string) $b['slot_date']))) ?></td><td><?= statusBadge((string) $b['status']) ?></td></tr>
+        <?php endforeach; ?></tbody></table></div>
+      <?php endif; ?>
     </div>
 
     <aside class="card card-pad sticky">
       <h2 style="font-size:1.2rem">Profile</h2>
       <form method="post">
-        <?= csrfField() ?>
+        <?= csrfField() ?><input type="hidden" name="action" value="profile">
         <div style="margin-bottom:10px"><label class="form-label">Name</label><input class="form-control" name="name" value="<?= e($u['name']) ?>"></div>
         <div style="margin-bottom:10px"><label class="form-label">Email</label><input class="form-control" value="<?= e($u['email']) ?>" disabled></div>
         <div style="margin-bottom:10px"><label class="form-label">Mobile</label><input class="form-control" name="mobile" value="<?= e((string) $u['mobile']) ?>"></div>
@@ -85,7 +153,9 @@ renderHeader('My account', '');
       </form>
       <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
       <a class="btn btn-outline btn-block btn-sm" href="<?= e(base('wishlist.php')) ?>">Wishlist &amp; alerts</a>
+      <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('chat.php')) ?>">My messages</a>
       <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('services.php')) ?>">Documents &amp; services</a>
+      <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('verify-otp.php')) ?>">Verify mobile (OTP)</a>
       <?php if (isRole('seller', 'dealer', 'admin')): ?><a class="btn btn-dark btn-block btn-sm" style="margin-top:8px" href="<?= e(base('seller/dashboard.php')) ?>">Seller portal</a><?php endif; ?>
     </aside>
   </div>

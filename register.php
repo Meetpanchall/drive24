@@ -25,6 +25,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'company' => trim((string) ($_POST['company'] ?? '')) ?: null,
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
         ]);
+        $idProof = trim((string) ($_POST['id_proof'] ?? ''));
+        if ($idProof !== '') {
+            insert('documents', ['user_id' => $id, 'doc_type' => 'kyc',
+                'doc_name' => ($role === 'dealer' ? 'Dealer licence - ' : 'PAN - ') . $idProof, 'status' => 'pending']);
+        }
         session_regenerate_id(true);
         $_SESSION['user_id'] = $id;
         logActivity($id, 'auth.register', $email);
@@ -59,6 +64,7 @@ renderHeader('Create account', '');
         <div><label class="form-label">I want to</label><select class="form-select" name="role">
           <option value="buyer">Buy a car</option><option value="seller">Sell my car</option><option value="dealer">Register as dealer</option></select></div>
         <div style="grid-column:1/-1"><label class="form-label">Dealership name (dealers only)</label><input class="form-control" name="company"></div>
+        <div style="grid-column:1/-1"><label class="form-label">PAN / dealer licence no. (KYC, sellers &amp; dealers)</label><input class="form-control" name="id_proof" placeholder="Stored for compliance verification"></div>
         <div style="grid-column:1/-1"><label class="form-label">Password (min 8 characters)</label><input class="form-control" type="password" name="password" required></div>
         <div style="grid-column:1/-1"><button class="btn btn-primary btn-block btn-lg" type="submit">Create account</button></div>
       </form>

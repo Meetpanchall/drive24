@@ -18,15 +18,18 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
             'payments' => ['Payments &amp; refunds', 'admin/payments.php'],
             'offers'   => ['Offers', 'admin/offers.php'],
             'payouts'  => ['Seller payouts', 'admin/payouts.php'],
+            'finance'  => ['Loan applications', 'admin/finance.php'],
         ],
         'People' => [
             'customers' => ['Customers', 'admin/customers.php'],
             'sellers'   => ['Sellers &amp; dealers', 'admin/sellers.php'],
             'kyc'       => ['KYC &amp; compliance', 'admin/kyc.php'],
             'support'   => ['Support tickets', 'admin/support.php'],
+            'reviews'   => ['Reviews &amp; ratings', 'admin/reviews.php'],
         ],
         'Insights' => [
-            'reports' => ['Analytics &amp; reports', 'admin/reports.php'],
+            'reports'  => ['Analytics &amp; reports', 'admin/reports.php'],
+            'activity' => ['Audit log', 'admin/activity.php'],
         ],
     ];
     $sellerMenu = [
@@ -34,11 +37,14 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
             'dashboard'  => ['Dashboard', 'seller/dashboard.php'],
             'listings'   => ['My listings', 'seller/listings.php'],
             'offers'     => ['Offers', 'seller/offers.php'],
+            'orders'     => ['Sales orders', 'seller/orders.php'],
             'testdrives' => ['Test drives', 'seller/testdrives.php'],
             'payouts'    => ['Payouts', 'seller/payouts.php'],
         ],
         'Shortcuts' => [
             'new' => ['List a new car', 'sell.php'],
+            'bulk' => ['Bulk CSV upload', 'seller/bulk-upload.php'],
+            'chat' => ['Messages', 'chat.php'],
             'site' => ['Back to marketplace', 'index.php'],
         ],
     ];

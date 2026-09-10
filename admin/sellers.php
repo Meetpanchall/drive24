@@ -34,7 +34,7 @@ adminHeader('Sellers and dealers', 'sellers');
     <tr><td class="num"><?= (int) $r['id'] ?></td>
       <td><b><?= e((string) $r['name']) ?></b><div class="muted" style="font-size:12.4px"><?= e((string) $r['email']) ?></div></td>
       <td><?= e(ucfirst((string) $r['role'])) ?></td>
-      <td><?= e((string) ($r['dealership'] ?? '-')) ?></td>
+      <td><?= e((string) ($r['company'] ?? '-')) ?></td>
       <td class="num"><?= (int) $r['listings'] ?></td><td class="num"><?= (int) $r['live'] ?></td><td class="num"><?= (int) $r['sold'] ?></td>
       <td class="num"><?= rupees($r['payouts']) ?></td>
       <td><?= statusBadge((string) $r['kyc_status']) ?></td>
