@@ -83,7 +83,7 @@ renderHeader('Buy and sell used cars online', 'home');
 </section>
 <?php endif; ?>
 
-<section class="wrap section">
+<section class="wrap section" id="how">
   <h2 class="sec-title reveal">How it works</h2>
   <div class="steps">
     <div class="step done">1. Search &amp; compare</div>
