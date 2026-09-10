@@ -9,17 +9,33 @@ $allowed = ['pending', 'verified', 'rejected'];
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
     $id = (int) ($_POST['id'] ?? 0);
-    $status = (string) ($_POST['status'] ?? '');
-    if ($id > 0 && in_array($status, $allowed, true)) {
-        $data = ['kyc_status' => $status];
-        updateRow('users', $data, 'id = ?', [$id]);
-        logActivity((int) $admin['id'], 'users.updated', '#' . $id . ' -> ' . $status);
-        flash('success', 'Record #' . $id . ' updated to ' . $status . '.');
+    if (($_POST['form'] ?? '') === 'doc') {
+        $docStatus = (string) ($_POST['doc_status'] ?? '');
+        $doc = fetchOne('SELECT * FROM documents WHERE id = ?', [$id]);
+        if ($doc && in_array($docStatus, ['pending', 'verified', 'rejected'], true)) {
+            updateRow('documents', ['status' => $docStatus], 'id = ?', [$id]);
+            notify((int) $doc['user_id'], 'Document ' . $docStatus, $doc['doc_name'], 'services.php');
+            logActivity((int) $admin['id'], 'documents.updated', '#' . $id . ' -> ' . $docStatus);
+            flash('success', 'Document #' . $id . ' marked ' . $docStatus . '.');
+        }
+    } else {
+        $status = (string) ($_POST['status'] ?? '');
+        if ($id > 0 && in_array($status, $allowed, true)) {
+            $data = ['kyc_status' => $status];
+            updateRow('users', $data, 'id = ?', [$id]);
+            notify($id, 'KYC ' . $status, 'Your verification status is now ' . $status . '.', 'account.php');
+            logActivity((int) $admin['id'], 'users.updated', '#' . $id . ' -> ' . $status);
+            flash('success', 'Record #' . $id . ' updated to ' . $status . '.');
+        }
     }
     redirect(base('admin/kyc.php'));
 }
 
 $rows = fetchAll("SELECT u.*, (SELECT COUNT(*) FROM documents d WHERE d.user_id = u.id) AS docs FROM users u ORDER BY FIELD(u.kyc_status,'pending','rejected','verified'), u.id DESC");
+$docsByUser = [];
+try {
+    foreach (fetchAll('SELECT * FROM documents ORDER BY id DESC') as $d) { $docsByUser[(int) $d['user_id']][] = $d; }
+} catch (Throwable $e) { /* listing_id column self-adds on next request */ }
 $counts = [];
 foreach ($rows as $r) { $k = (string) $r[$statusCol]; $counts[$k] = ($counts[$k] ?? 0) + 1; }
 
@@ -53,6 +69,21 @@ adminHeader('KYC & compliance', 'kyc');
         </form>
       </td>
     </tr>
+    <?php if (!empty($docsByUser[(int) $r['id']])): ?>
+    <tr><td></td><td colspan="7">
+      <?php foreach ($docsByUser[(int) $r['id']] as $d): ?>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;border-bottom:1px dashed var(--line)">
+          <span><?= e($d['doc_name']) ?></span>
+          <?= !empty($d['file_url']) ? '<a target="_blank" href="' . e(base('assets/uploads/' . $d['file_url'])) . '">View</a>' : '<span class="muted">no file</span>' ?>
+          <?= statusBadge((string) $d['status']) ?>
+          <form method="post" style="display:inline-flex;gap:4px"><?= csrfField() ?><input type="hidden" name="form" value="doc"><input type="hidden" name="id" value="<?= (int) $d['id'] ?>">
+            <button class="btn btn-outline btn-sm" name="doc_status" value="verified" type="submit">Verify</button>
+            <button class="btn btn-ghost btn-sm" name="doc_status" value="rejected" type="submit">Reject</button>
+          </form>
+        </div>
+      <?php endforeach; ?>
+    </td></tr>
+    <?php endif; ?>
   <?php endforeach; ?>
   </tbody></table></div>
 <?php adminFooter(); ?>

@@ -173,3 +173,55 @@ CREATE TABLE IF NOT EXISTS escrow_ledger (
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   INDEX idx_esc_order (order_id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS vehicle_features (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  vehicle_id INT NOT NULL,
+  category ENUM('comfort','safety','entertainment','exterior') NOT NULL,
+  feature VARCHAR(80) NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_vf (vehicle_id, feature),
+  INDEX idx_vf_cat (category)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS rc_transfers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL UNIQUE,
+  listing_id INT NOT NULL,
+  buyer_id INT NOT NULL,
+  seller_id INT NOT NULL,
+  status ENUM('sale_completed','documents_verified','application_filed','rto_processing','transfer_completed') NOT NULL DEFAULT 'sale_completed',
+  rto_office VARCHAR(120) DEFAULT NULL,
+  application_no VARCHAR(60) DEFAULT NULL,
+  remark VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  INDEX idx_rc_status (status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS bids (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL,
+  buyer_id INT NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_bid_listing (listing_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS questions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL,
+  user_id INT NOT NULL,
+  question VARCHAR(500) NOT NULL,
+  answer VARCHAR(1000) DEFAULT NULL,
+  answered_by INT DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  answered_at TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_q_listing (listing_id)
+) ENGINE=InnoDB;

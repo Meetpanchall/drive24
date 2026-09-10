@@ -57,7 +57,7 @@ function ensureExtendedSchema(): void
         $dbName = config('db')['name'] ?? 'drive24';
         $has = (int) fetchValue(
             'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?',
-            [$dbName, 'reviews'], 0
+            [$dbName, 'questions'], 0
         );
         if ($has === 0) {
             $sql = (string) @file_get_contents(__DIR__ . '/../database/migrate.sql');
@@ -75,19 +75,26 @@ function ensureExtendedSchema(): void
             db()->exec("INSERT IGNORE INTO vehicle_history (vehicle_id, service_records, owners_history, report_summary, checked_on)
                 SELECT v.id, 3, CONCAT(v.owners, ' owner(s) as per RC'), 'History check pending - basic RC verification done.', CURDATE() FROM vehicles v");
         }
-        $col = (int) fetchValue(
-            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'users' AND column_name = 'mobile_verified'",
-            [$dbName], 0
-        );
-        if ($col === 0) {
-            db()->exec('ALTER TABLE users ADD COLUMN mobile_verified TINYINT(1) NOT NULL DEFAULT 0 AFTER kyc_status');
-        }
-        $doc = (int) fetchValue(
-            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'documents' AND column_name = 'file_url'",
-            [$dbName], 0
-        );
-        if ($doc === 0) {
-            db()->exec('ALTER TABLE documents ADD COLUMN file_url VARCHAR(160) DEFAULT NULL AFTER doc_name');
+        $needCols = [
+            ['users', 'mobile_verified', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER kyc_status'],
+            ['documents', 'file_url', 'VARCHAR(160) DEFAULT NULL AFTER doc_name'],
+            ['documents', 'listing_id', 'INT DEFAULT NULL AFTER order_id'],
+            ['vehicles', 'area', 'VARCHAR(80) DEFAULT NULL AFTER city'],
+            ['test_drives', 'executive', 'VARCHAR(120) DEFAULT NULL AFTER address'],
+            ['listings', 'auction_enabled', 'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['listings', 'auction_ends_at', 'DATETIME DEFAULT NULL'],
+            ['listings', 'starting_bid', 'DECIMAL(12,2) DEFAULT NULL'],
+            ['vehicle_history', 'loan_status', "VARCHAR(40) NOT NULL DEFAULT 'No active loan'"],
+            ['vehicle_history', 'odometer_verified', 'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['vehicle_history', 'rc_verified', 'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['support_tickets', 'priority', "ENUM('low','medium','high') NOT NULL DEFAULT 'medium'"],
+        ];
+        foreach ($needCols as [$tbl, $colName, $def]) {
+            $n = (int) fetchValue(
+                'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?',
+                [$dbName, $tbl, $colName], 0
+            );
+            if ($n === 0) { db()->exec("ALTER TABLE `$tbl` ADD COLUMN `$colName` $def"); }
         }
     } catch (Throwable $e) { /* never break a request for a migration */ }
 }

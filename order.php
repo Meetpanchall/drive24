@@ -15,6 +15,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             q("UPDATE payments SET status = 'refunded' WHERE order_id = ? AND status = 'paid'", [$id]);
         }
         flash('success', 'Order cancelled, escrow refunded and the car returned to inventory.');
+    } elseif (($_POST['action'] ?? '') === 'return') {
+        $ord = fetchOne('SELECT o.*, l.seller_id FROM orders o JOIN listings l ON l.id = o.listing_id WHERE o.id = ? AND o.buyer_id = ?', [$id, $u['id']]);
+        $within = $ord && !empty($ord['delivery_date']) && (time() - strtotime((string) $ord['delivery_date'])) <= 7 * 86400;
+        if ($ord && $ord['status'] === 'delivered' && $within) {
+            q("UPDATE orders SET status = 'returned' WHERE id = ?", [$id]);
+            q("UPDATE listings l JOIN orders o ON o.listing_id = l.id SET l.status = 'approved' WHERE o.id = ?", [$id]);
+            $held = (float) fetchValue("SELECT COALESCE(SUM(amount),0) FROM escrow_ledger WHERE order_id = ? AND kind = 'hold'", [$id], 0);
+            if ($held > 0) {
+                insert('escrow_ledger', ['order_id' => $id, 'kind' => 'refund', 'amount' => $held, 'note' => 'Escrow refunded on 7-day return']);
+                q("UPDATE payments SET status = 'refunded' WHERE order_id = ? AND status = 'paid'", [$id]);
+            }
+            notify((int) $ord['seller_id'], 'Buyer requested a return', 'Order ' . $ord['order_no'], 'seller/orders.php');
+            notifyAdmins('Return requested', 'Order ' . $ord['order_no'] . ' marked returned by buyer.', 'admin/orders.php');
+            flash('success', 'Return accepted. We will collect the car and refund you within 5-7 working days.');
+        } else {
+            flash('error', 'Returns are accepted within 7 days of delivery.');
+        }
     } elseif (($_POST['action'] ?? '') === 'review') {
         $ord = fetchOne('SELECT o.*, l.seller_id FROM orders o JOIN listings l ON l.id = o.listing_id WHERE o.id = ? AND o.buyer_id = ?', [$id, $u['id']]);
         $rating = (int) ($_POST['rating'] ?? 0);
@@ -37,6 +54,13 @@ $order = fetchOne('SELECT o.*, v.make, v.model, v.year, v.variant, v.image, v.re
 if (!$order) { flash('error', 'Order not found.'); redirect(base('orders.php')); }
 $payments = fetchAll('SELECT * FROM payments WHERE order_id = ? ORDER BY id', [$id]);
 $docs = fetchAll('SELECT * FROM documents WHERE order_id = ?', [$id]);
+$escrow = fetchAll('SELECT * FROM escrow_ledger WHERE order_id = ? ORDER BY id', [$id]);
+$myReview = fetchOne('SELECT * FROM reviews WHERE order_id = ? AND author_id = ?', [$id, $u['id']]);
+$rc = fetchOne('SELECT * FROM rc_transfers WHERE order_id = ?', [$id]);
+$rcStages = ['sale_completed' => 'Sale completed', 'documents_verified' => 'Documents verified',
+    'application_filed' => 'RTO application filed', 'rto_processing' => 'RTO processing', 'transfer_completed' => 'Transfer completed'];
+$rcIndex = $rc ? (int) array_search((string) $rc['status'], array_keys($rcStages), true) : -1;
+$loanEmi = ((int) $order['finance_opted'] && (int) $order['tenure_months'] > 0) ? emiAmount((float) $order['loan_amount'], 9.5, (int) $order['tenure_months']) : 0;
 $timeline = ['confirmed' => 'Booking confirmed', 'processing' => 'Documentation &amp; RC transfer', 'in_transit' => 'Vehicle dispatched', 'delivered' => 'Delivered'];
 $order_status = (string) $order['status'];
 $stages = array_keys($timeline);
@@ -63,6 +87,24 @@ renderHeader('Order ' . $order['order_no'], '');
           <div class="kv"><span>Status</span><span><?= statusBadge($order_status) ?></span></div>
         </div>
       </div>
+      <?php if ($rc): ?>
+        <h3 style="margin-top:18px;font-size:1.05rem">RC transfer tracker</h3>
+        <div class="steps">
+          <?php $ri = 0; foreach ($rcStages as $rk => $rl): ?>
+            <div class="step <?= $ri < $rcIndex ? 'done' : ($ri === $rcIndex ? 'active' : '') ?>"><?= ($ri + 1) . '. ' . $rl ?></div>
+          <?php $ri++; endforeach; ?>
+        </div>
+        <div class="kv"><span>RTO office</span><span><?= e((string) ($rc['rto_office'] ?? 'Being assigned')) ?></span></div>
+        <?php if (!empty($rc['application_no'])): ?><div class="kv"><span>Application no.</span><span class="num"><?= e((string) $rc['application_no']) ?></span></div><?php endif; ?>
+        <?php if (!empty($rc['remark'])): ?><div class="kv"><span>Latest update</span><span><?= e((string) $rc['remark']) ?></span></div><?php endif; ?>
+      <?php endif; ?>
+      <?php if ($loanEmi > 0): ?>
+        <h3 style="margin-top:18px;font-size:1.05rem">Loan repayment schedule</h3>
+        <div class="kv"><span>Loan amount</span><span class="num"><?= rupees($order['loan_amount']) ?></span></div>
+        <div class="kv"><span>Tenure</span><span class="num"><?= (int) $order['tenure_months'] ?> months @ 9.5% p.a.</span></div>
+        <div class="kv"><span>Monthly EMI</span><b class="num"><?= rupees($loanEmi) ?></b></div>
+        <div class="kv"><span>Total payable</span><span class="num"><?= rupees($loanEmi * (int) $order['tenure_months']) ?></span></div>
+      <?php endif; ?>
       <h3 style="margin-top:18px;font-size:1.05rem">Payments</h3>
       <div class="table-wrap"><table class="data">
         <thead><tr><th>Txn ref</th><th>Method</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
@@ -110,6 +152,11 @@ renderHeader('Order ' . $order['order_no'], '');
         <form method="post" style="margin-top:12px"><?= csrfField() ?><input type="hidden" name="action" value="cancel">
           <button class="btn btn-outline btn-block btn-sm" type="submit">Cancel order</button></form>
       <?php endif; ?>
+      <?php if ($order_status === 'delivered' && !empty($order['delivery_date']) && (time() - strtotime((string) $order['delivery_date'])) <= 7 * 86400): ?>
+        <form method="post" style="margin-top:8px" onsubmit="return confirm('Return this car under the 7-day policy?')"><?= csrfField() ?><input type="hidden" name="action" value="return">
+          <button class="btn btn-outline btn-block btn-sm" type="submit">Return within 7 days</button></form>
+      <?php endif; ?>
+      <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('invoice.php?id=' . $id)) ?>">Download invoice</a>
       <a class="btn btn-ghost btn-block btn-sm" href="<?= e(base('support.php')) ?>">Need help?</a>
     </aside>
   </div>

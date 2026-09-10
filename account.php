@@ -39,6 +39,20 @@ try {
     $chats = (int) fetchValue('SELECT COUNT(*) FROM chat_threads WHERE buyer_id = ? OR seller_id = ?', [$u['id'], $u['id']], 0);
 } catch (Throwable $e) { /* extension tables self-create on next request */ }
 $saved = count(wishlistIds());
+$myBids = [];
+try {
+    $myBids = fetchAll('SELECT b.amount AS mybid, b.created_at AS bid_on, l.id AS listing_id, l.auction_ends_at,
+        (SELECT MAX(amount) FROM bids WHERE listing_id = l.id) AS topbid,
+        (SELECT COUNT(*) FROM bids WHERE listing_id = l.id) AS bidcount,
+        v.make, v.model, v.year FROM bids b
+        JOIN listings l ON l.id = b.listing_id JOIN vehicles v ON v.id = l.vehicle_id
+        WHERE b.buyer_id = ? ORDER BY b.id DESC', [$u['id']]);
+} catch (Throwable $e) { /* bids table self-creates on next request */ }
+$profileDone = 0;
+foreach (['name' => $u['name'], 'mobile' => $u['mobile'], 'city' => $u['city']] as $pv) { if (trim((string) $pv) !== '') { $profileDone++; } }
+if ((int) ($u['mobile_verified'] ?? 0)) { $profileDone++; }
+if (($u['kyc_status'] ?? '') === 'verified') { $profileDone++; }
+$profilePct = (int) round($profileDone * 100 / 5);
 
 renderHeader('My account', '');
 ?>
@@ -72,12 +86,13 @@ renderHeader('My account', '');
 
       <h2 style="font-size:1.2rem;margin-top:24px">Test drives</h2>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th>Car</th><th>Mode</th><th>Slot</th><th>Status</th></tr></thead>
+        <thead><tr><th>Car</th><th>Mode</th><th>Slot</th><th>Executive</th><th>Status</th></tr></thead>
         <tbody>
-        <?php if (!$drives): ?><tr><td colspan="4" class="empty">No test drives booked.</td></tr><?php endif; ?>
+        <?php if (!$drives): ?><tr><td colspan="5" class="empty">No test drives booked.</td></tr><?php endif; ?>
         <?php foreach ($drives as $d): ?>
           <tr><td><?= e($d['make'] . ' ' . $d['model']) ?></td><td><?= e(ucfirst($d['mode'])) ?></td>
             <td class="num"><?= e(date('d M Y', strtotime((string) $d['slot_date']))) ?>, <?= e($d['slot_time']) ?></td>
+            <td><?= e((string) ($d['executive'] ?? 'To be assigned')) ?></td>
             <td><?= statusBadge((string) $d['status']) ?></td></tr>
         <?php endforeach; ?>
         </tbody></table></div>
@@ -93,6 +108,19 @@ renderHeader('My account', '');
             <td><?= statusBadge((string) $o['status']) ?></td></tr>
         <?php endforeach; ?>
         </tbody></table></div>
+
+      <?php if ($myBids): ?>
+      <h2 style="font-size:1.2rem;margin-top:24px">My auction bids</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Car</th><th>My bid</th><th>Top bid</th><th>Ends</th><th></th></tr></thead>
+        <tbody><?php foreach ($myBids as $b): ?>
+          <tr><td><?= e($b['year'] . ' ' . $b['make'] . ' ' . $b['model']) ?></td>
+            <td class="num"><?= rupees($b['mybid']) ?><?= ((float) $b['mybid'] >= (float) $b['topbid']) ? ' <span class="badge ok">Highest</span>' : '' ?></td>
+            <td class="num"><?= rupees($b['topbid']) ?> <small class="muted">(<?= (int) $b['bidcount'] ?>)</small></td>
+            <td class="num"><?= !empty($b['auction_ends_at']) ? e(date('d M, h:i A', strtotime((string) $b['auction_ends_at']))) : '-' ?></td>
+            <td><a class="btn btn-outline btn-sm" href="<?= e(base('car.php?id=' . (int) $b['listing_id'])) ?>">Bid</a></td></tr>
+        <?php endforeach; ?></tbody></table></div>
+      <?php endif; ?>
 
       <h2 style="font-size:1.2rem;margin-top:24px">Saved searches &amp; alerts</h2>
       <div class="table-wrap"><table class="data">
@@ -143,6 +171,8 @@ renderHeader('My account', '');
 
     <aside class="card card-pad sticky">
       <h2 style="font-size:1.2rem">Profile</h2>
+      <div style="margin-bottom:12px"><small class="muted">Profile completeness: <b class="num"><?= $profilePct ?>%</b></small>
+        <div style="background:var(--line);border-radius:6px;height:8px;margin-top:4px"><div style="width:<?= $profilePct ?>%;background:#16a34a;height:8px;border-radius:6px"></div></div></div>
       <form method="post">
         <?= csrfField() ?><input type="hidden" name="action" value="profile">
         <div style="margin-bottom:10px"><label class="form-label">Name</label><input class="form-control" name="name" value="<?= e($u['name']) ?>"></div>

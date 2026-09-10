@@ -31,6 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $docs = ($u && dbReady()) ? fetchAll('SELECT * FROM documents WHERE user_id = ? ORDER BY created_at DESC', [$u['id']]) : [];
+$myRc = ($u && dbReady()) ? fetchAll('SELECT rc.*, o.order_no, v.make, v.model FROM rc_transfers rc JOIN orders o ON o.id = rc.order_id JOIN listings l ON l.id = rc.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE rc.buyer_id = ? ORDER BY rc.updated_at DESC', [$u['id']]) : [];
 $services = [
     ['RC transfer', 'End-to-end ownership transfer with the RTO, including Form 29/30 and smart card delivery.', '3,499'],
     ['Insurance transfer', 'Transfer or renew the policy in your name with our partner insurers.', '999'],
@@ -102,6 +103,13 @@ renderHeader('RTO and ownership services', 'services');
         <div class="step">Delivered to you</div>
       </div>
       <p class="muted" style="font-size:13px;margin-top:10px">Typical completion: 21 to 30 working days depending on the RTO.</p>
+      <?php if ($myRc): ?>
+        <h3 style="font-size:1.05rem;margin-top:14px">My RC transfers</h3>
+        <?php foreach ($myRc as $rc): ?>
+          <div class="kv"><span><a href="<?= e(base('order.php?id=' . (int) $rc['order_id'])) ?>"><?= e($rc['order_no']) ?></a><br><small class="muted"><?= e($rc['make'] . ' ' . $rc['model']) ?></small></span>
+            <small><?= e(ucwords(str_replace('_', ' ', (string) $rc['status']))) ?></small></div>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </aside>
   </div>
 </div>

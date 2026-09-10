@@ -24,6 +24,17 @@ $recentOrders = fetchAll('SELECT o.order_no, o.amount, o.status, o.created_at, v
     FROM orders o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id
     ORDER BY o.id DESC LIMIT 6');
 $activity = fetchAll('SELECT a.*, u.name FROM activity_log a LEFT JOIN users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 8');
+$attention = [];
+try {
+    $attention = [
+        ['Pending listing approvals', (int) fetchValue("SELECT COUNT(*) FROM listings WHERE status = 'pending'", [], 0), 'admin/approvals.php'],
+        ['KYC verifications waiting', (int) fetchValue("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'", [], 0), 'admin/kyc.php'],
+        ['Open support tickets', (int) fetchValue("SELECT COUNT(*) FROM support_tickets WHERE status = 'open'", [], 0), 'admin/support.php'],
+        ['Listing reports to review', (int) fetchValue("SELECT COUNT(*) FROM support_tickets WHERE category = 'report' AND status = 'open'", [], 0), 'admin/support.php'],
+        ['Auctions ending in 48 hrs', (int) fetchValue("SELECT COUNT(*) FROM listings WHERE auction_enabled = 1 AND auction_ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 48 HOUR)", [], 0), 'admin/vehicles.php'],
+        ['RC transfers in progress', (int) fetchValue("SELECT COUNT(*) FROM rc_transfers WHERE status <> 'transfer_completed'", [], 0), 'admin/orders.php'],
+    ];
+} catch (Throwable $e) { /* extension tables self-create on next request */ }
 
 adminHeader('Operations dashboard', 'dashboard');
 ?>
@@ -31,6 +42,13 @@ adminHeader('Operations dashboard', 'dashboard');
   <?php $i = 0; foreach ($kpi as $label => $v): ?>
     <div class="kpi"><small><?= e($label) ?></small><b class="num"><?= $label === 'Revenue' ? rupees($v) : number_format((int) $v) ?></b></div>
   <?php $i++; endforeach; ?>
+</div>
+
+<div class="card card-pad" style="margin-top:18px">
+  <h2 style="font-size:1.1rem">Needs attention</h2>
+  <?php foreach ($attention as [$label, $n, $link]): ?>
+    <div class="kv"><span><a href="<?= e(base($link)) ?>"><?= e($label) ?></a></span><b class="num"><?= $n > 0 ? statusBadge('pending') . ' ' . $n : statusBadge('verified') . ' 0' ?></b></div>
+  <?php endforeach; ?>
 </div>
 
 <div class="split" style="margin-top:18px">

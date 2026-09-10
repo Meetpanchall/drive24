@@ -175,6 +175,35 @@ function notify(int $userId, string $title, string $body = '', string $link = ''
     catch (Throwable $e) { /* notifications must never break a request */ }
 }
 
+/** Notify every admin (used for reports, KYC, support, document alerts). */
+function notifyAdmins(string $title, string $body = '', string $link = ''): void
+{
+    if (!dbReady()) { return; }
+    try {
+        foreach (fetchAll("SELECT id FROM users WHERE role = 'admin'") as $a) {
+            notify((int) $a['id'], $title, $body, $link);
+        }
+    } catch (Throwable $e) { /* never break a request */ }
+}
+
+/** 0-100 score rendered as a 5-star string, e.g. ★★★★☆. */
+function stars(?int $score): string
+{
+    if ($score === null) { return '☆☆☆☆☆'; }
+    $filled = (int) round(max(0, min(100, $score)) / 20);
+    return str_repeat('★', $filled) . str_repeat('☆', 5 - $filled);
+}
+
+/** Human label for a 0-100 inspection/condition score. */
+function conditionLabel(?int $score): string
+{
+    if ($score === null) { return 'Not inspected'; }
+    if ($score >= 85) { return 'Excellent'; }
+    if ($score >= 70) { return 'Good'; }
+    if ($score >= 55) { return 'Average'; }
+    return 'Needs attention';
+}
+
 function unreadNotifications(): int
 {
     $u = user();

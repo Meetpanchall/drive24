@@ -14,6 +14,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $method  = in_array($_POST['method'] ?? 'upi', ['upi', 'card', 'netbanking', 'finance'], true) ? $_POST['method'] : 'upi';
     $loan    = $finance ? (float) ($_POST['loan_amount'] ?? 0) : 0;
     $tenure  = $finance ? (int) ($_POST['tenure'] ?? 60) : 0;
+    $hub     = ($_POST['fulfilment'] ?? 'home') === 'hub';
+    $city    = trim((string) ($_POST['city'] ?? ''));
+    $address = $hub ? 'DRIVE24 hub pickup, ' . $city : trim((string) ($_POST['address'] ?? ''));
 
     $pdo = db();
     $pdo->beginTransaction();
@@ -28,8 +31,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'loan_amount'    => $loan,
             'tenure_months'  => $tenure,
             'status'         => 'confirmed',
-            'delivery_city'  => trim((string) ($_POST['city'] ?? '')),
-            'delivery_address' => trim((string) ($_POST['address'] ?? '')),
+            'delivery_city'  => $city,
+            'delivery_address' => $address,
             'delivery_date'  => date('Y-m-d', strtotime('+7 days')),
         ]);
         insert('payments', [
@@ -42,6 +45,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         insert('escrow_ledger', [
             'order_id' => $orderId, 'kind' => 'hold', 'amount' => $booking,
             'note' => 'Booking held in DRIVE24 escrow - released to seller after delivery',
+        ]);
+        insert('rc_transfers', [
+            'order_id' => $orderId, 'listing_id' => $listingId,
+            'buyer_id' => $u['id'], 'seller_id' => (int) $car['seller_id'],
+            'status' => 'sale_completed',
         ]);
         q("UPDATE listings SET status = 'reserved' WHERE id = ?", [$listingId]);
         insert('payouts', ['seller_id' => (int) $car['seller_id'], 'order_id' => $orderId, 'amount' => (float) $car['price'] * 0.96, 'status' => 'pending']);
@@ -70,6 +78,11 @@ renderHeader('Checkout', '');
       <?= csrfField() ?><input type="hidden" name="listing_id" value="<?= (int) $car['id'] ?>">
       <h1 style="font-size:1.4rem">Secure checkout</h1>
       <p class="muted">Pay a refundable booking amount of <b class="num"><?= rupees(25000) ?></b> to reserve this car. The order, payment and seller payout rows are written inside one MySQL transaction.</p>
+      <h3 style="font-size:1rem;margin-top:14px">Delivery or pickup</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <label class="chip"><input type="radio" name="fulfilment" value="home" checked> Home delivery</label>
+        <label class="chip"><input type="radio" name="fulfilment" value="hub"> Collect from DRIVE24 hub</label>
+      </div>
       <h3 style="font-size:1rem;margin-top:14px">Delivery details</h3>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
         <div><label class="form-label">City</label><input class="form-control" name="city" value="<?= e((string) $u['city']) ?>" required></div>
@@ -89,7 +102,7 @@ renderHeader('Checkout', '');
         <div><label class="form-label">Tenure</label><select class="form-select" name="tenure"><option>48</option><option selected>60</option><option>72</option><option>84</option></select></div>
       </div>
       <button class="btn btn-primary btn-lg btn-block" style="margin-top:18px" type="submit">Pay <?= rupees(25000) ?> &amp; reserve</button>
-      <p class="muted" style="font-size:12.5px;margin-top:10px">Escrow protected &middot; PCI-DSS aligned &middot; 5-day money-back guarantee.</p>
+      <p class="muted" style="font-size:12.5px;margin-top:10px">Escrow protected &middot; PCI-DSS aligned &middot; 7-day easy return &middot; Free RC transfer.</p>
     </form>
 
     <aside class="card card-pad sticky">

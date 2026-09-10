@@ -23,6 +23,13 @@ renderHeader('Payment successful', '');
       <div class="kv"><span>Balance</span><span class="num"><?= rupees((float) $order['amount'] - (float) $order['booking_amount']) ?></span></div>
       <div class="kv"><span>Expected delivery</span><span class="num"><?= e(date('d M Y', strtotime((string) $order['delivery_date']))) ?></span></div>
     </div>
+    <div class="card card-pad" style="text-align:left;margin-top:16px">
+      <h3 style="font-size:1rem;margin-top:0">What happens next</h3>
+      <div class="kv"><span>1. Documentation</span><span>Sign the sale agreement online; we verify the RC and insurance.</span></div>
+      <div class="kv"><span>2. Balance payment</span><span>Pay the balance via UPI, card, netbanking or your approved loan.</span></div>
+      <div class="kv"><span>3. Delivery</span><span>Home delivery or hub pickup in about 7 days, with a 7-day easy return.</span></div>
+      <div class="kv"><span>4. RC transfer</span><span>Free RC transfer to your name - track it on the order page.</span></div>
+    </div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap">
       <a class="btn btn-primary" href="<?= e(base('order.php?id=' . (int) $order['id'])) ?>">Track this order</a>
       <a class="btn btn-outline" href="<?= e(base('cars.php')) ?>">Continue browsing</a>

@@ -45,6 +45,46 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'comment' => mb_substr(trim((string) ($_POST['comment'] ?? '')), 0, 2000) ?: null, 'status' => 'pending']);
             flash('success', 'Review submitted. It goes live after moderation.');
         }
+    } elseif ($action === 'bid') {
+        $car0 = findListing($id);
+        $amount = (float) ($_POST['amount'] ?? 0);
+        $top = $car0 ? (float) fetchValue('SELECT COALESCE(MAX(amount),0) FROM bids WHERE listing_id = ?', [$id], 0) : 0;
+        $min = max($top + 1000, (float) ($car0['starting_bid'] ?? 0));
+        if (!$car0 || (int) $car0['auction_enabled'] !== 1) {
+            flash('error', 'This car is not on auction.');
+        } elseif (!empty($car0['auction_ends_at']) && $car0['auction_ends_at'] < date('Y-m-d H:i:s')) {
+            flash('error', 'This auction has ended.');
+        } elseif ($amount < $min) {
+            flash('error', 'Your bid must be at least ' . rupees($min) . '.');
+        } else {
+            $prev = fetchOne('SELECT buyer_id FROM bids WHERE listing_id = ? ORDER BY amount DESC, id DESC LIMIT 1', [$id]);
+            insert('bids', ['listing_id' => $id, 'buyer_id' => $u['id'], 'amount' => $amount]);
+            notify((int) $car0['seller_id'], 'New auction bid', rupees($amount) . ' on ' . vehicleTitle($car0), 'car.php?id=' . $id);
+            if ($prev && (int) $prev['buyer_id'] !== (int) $u['id']) {
+                notify((int) $prev['buyer_id'], 'You were outbid', vehicleTitle($car0) . ' - top bid is now ' . rupees($amount), 'car.php?id=' . $id);
+            }
+            flash('success', 'Your bid of ' . rupees($amount) . ' is now the highest.');
+        }
+    } elseif ($action === 'question') {
+        $qt = mb_substr(trim((string) ($_POST['question'] ?? '')), 0, 500);
+        if ($qt === '') {
+            flash('error', 'Please type your question.');
+        } else {
+            insert('questions', ['listing_id' => $id, 'user_id' => $u['id'], 'question' => $qt]);
+            $car0 = findListing($id);
+            if ($car0) { notify((int) $car0['seller_id'], 'New question on your car', vehicleTitle($car0), 'seller/questions.php'); }
+            flash('success', 'Question posted. The seller usually answers within a day.');
+        }
+    } elseif ($action === 'report') {
+        $reason = mb_substr((string) ($_POST['reason'] ?? 'other'), 0, 60);
+        $detail = mb_substr(trim((string) ($_POST['details'] ?? '')), 0, 2000);
+        insert('support_tickets', ['user_id' => $u['id'],
+            'subject' => 'Listing report #' . $id . ': ' . $reason,
+            'category' => 'report', 'priority' => 'high',
+            'message' => "Listing: " . base('car.php?id=' . $id) . "\nReason: " . $reason . "\n\n" . $detail,
+            'status' => 'open']);
+        notifyAdmins('Listing reported', 'Listing #' . $id . ' reported: ' . $reason, 'admin/support.php');
+        flash('success', 'Thanks - our trust team will review this listing.');
     }
     redirect(base('car.php?id=' . $id));
 }
@@ -72,6 +112,30 @@ $cmp = compareIds();
 $saved = in_array($id, $wish, true);
 $emi = emiAmount((float) $car['price'] * 0.8, 9.5, 60);
 $shareUrl = (($_SERVER['HTTP_HOST'] ?? '') ? ('https://' . $_SERVER['HTTP_HOST']) : '') . base('car.php?id=' . $id);
+$features = fetchAll('SELECT category, feature FROM vehicle_features WHERE vehicle_id = ? ORDER BY category, feature', [(int) $car['vehicle_id']]);
+$featByCat = [];
+foreach ($features as $f) { $featByCat[$f['category']][] = $f['feature']; }
+$listingDocs = fetchAll('SELECT doc_type, doc_name, status FROM documents WHERE listing_id = ? ORDER BY id', [$id]);
+$sellerId = (int) $car['seller_id'];
+$sellerSold = (int) fetchValue("SELECT COUNT(*) FROM listings WHERE seller_id = ? AND status = 'sold'", [$sellerId], 0);
+$offersTotal = (int) fetchValue('SELECT COUNT(*) FROM offers o JOIN listings l ON l.id = o.listing_id WHERE l.seller_id = ?', [$sellerId], 0);
+$offersAnswered = (int) fetchValue("SELECT COUNT(*) FROM offers o JOIN listings l ON l.id = o.listing_id WHERE l.seller_id = ? AND o.status <> 'new'", [$sellerId], 0);
+$sellerResp = $offersTotal > 0 ? (int) round($offersAnswered * 100 / $offersTotal) : 100;
+$sellerCars = fetchAll(LISTING_SELECT . ' WHERE l.status = ? AND l.seller_id = ? AND l.id <> ? ORDER BY l.id DESC LIMIT 3', ['approved', $sellerId, $id]);
+$ratingDist = fetchAll("SELECT rating, COUNT(*) AS n FROM reviews WHERE listing_id = ? AND status = 'approved' GROUP BY rating", [$id]);
+$distMap = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+foreach ($ratingDist as $d) { $distMap[(int) $d['rating']] = (int) $d['n']; }
+$questions = fetchAll('SELECT q.*, u.name AS asker FROM questions q JOIN users u ON u.id = q.user_id WHERE q.listing_id = ? ORDER BY q.id DESC LIMIT 20', [$id]);
+$auction = ((int) $car['auction_enabled'] === 1);
+$topBid = $auction ? (float) fetchValue('SELECT COALESCE(MAX(amount),0) FROM bids WHERE listing_id = ?', [$id], 0) : 0;
+$bidCount = $auction ? (int) fetchValue('SELECT COUNT(*) FROM bids WHERE listing_id = ?', [$id], 0) : 0;
+$auctionLive = $auction && (empty($car['auction_ends_at']) || $car['auction_ends_at'] >= date('Y-m-d H:i:s'));
+$minBid = max($topBid + 1000, (float) ($car['starting_bid'] ?? 0));
+$myTopBid = ($auction && $me) ? (float) fetchValue('SELECT COALESCE(MAX(amount),0) FROM bids WHERE listing_id = ? AND buyer_id = ?', [$id, $me['id']], 0) : 0;
+$insDays = !empty($car['insurance_valid_till']) ? (int) floor((strtotime((string) $car['insurance_valid_till']) - time()) / 86400) : null;
+$docFee = 4999;
+$tcs = ((float) $car['price'] >= 1000000) ? (float) $car['price'] * 0.01 : 0;
+$onRoad = (float) $car['price'] + $docFee + $tcs;
 
 renderHeader(vehicleTitle($car), 'cars');
 ?>
@@ -98,7 +162,7 @@ renderHeader(vehicleTitle($car), 'cars');
           <div class="meta">
             <span><?= number_format((int) $car['km_driven']) ?> km</span><span><?= e((string) $car['fuel_type']) ?></span>
             <span><?= e((string) $car['transmission']) ?></span><span><?= (int) $car['owners'] ?> owner</span>
-            <span><?= e((string) $car['city']) ?></span><span><?= (int) $car['views'] ?> views</span>
+            <span><?= e(trim(((string) ($car['area'] ?? '') !== '' ? (string) $car['area'] . ', ' : '') . (string) $car['city'])) ?></span><span><?= (int) $car['views'] ?> views</span>
           </div>
           <p class="muted" style="margin-top:12px"><?= e((string) $car['description']) ?></p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -114,7 +178,34 @@ renderHeader(vehicleTitle($car), 'cars');
         </div>
       </div>
 
-      <div class="card card-pad" style="margin-top:18px">
+      <div class="card card-pad" style="margin-top:18px" id="overview">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <a class="btn btn-ghost btn-sm" href="#overview">Overview</a>
+          <a class="btn btn-ghost btn-sm" href="#specs">Specifications</a>
+          <a class="btn btn-ghost btn-sm" href="#features">Features</a>
+          <a class="btn btn-ghost btn-sm" href="#condition">Condition</a>
+          <a class="btn btn-ghost btn-sm" href="#history">History</a>
+          <a class="btn btn-ghost btn-sm" href="#documents">Documents</a>
+          <a class="btn btn-ghost btn-sm" href="#location">Location</a>
+          <a class="btn btn-ghost btn-sm" href="#reviews">Reviews</a>
+          <a class="btn btn-ghost btn-sm" href="#qa">Q&amp;A</a>
+        </div>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px" id="price">
+        <h2 style="font-size:1.2rem">Price breakup</h2>
+        <div class="kv"><span>Car price</span><b class="num"><?= rupees($car['price']) ?></b></div>
+        <div class="kv"><span>RC transfer + documentation</span><span class="num"><?= rupees($docFee) ?></span></div>
+        <div class="kv"><span>TCS (1% on cars above &#8377;10 lakh)</span><span class="num"><?= $tcs > 0 ? rupees($tcs) : 'Not applicable' ?></span></div>
+        <div class="kv"><span><b>Estimated on-road price</b></span><b class="num"><?= rupees($onRoad) ?></b></div>
+        <p class="muted" style="font-size:13px">Includes DRIVE24 buyer protection and doorstep delivery in the same city. Insurance renewal, if due, is extra at actuals.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn btn-outline btn-sm" href="<?= e(base('exchange.php?listing=' . $id)) ?>">Exchange old car, get bonus up to &#8377;20,000</a>
+          <a class="btn btn-outline btn-sm" href="<?= e(base('finance.php?listing=' . $id)) ?>">Compare loan offers</a>
+        </div>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px" id="specs">
         <h2 style="font-size:1.2rem">Specifications</h2>
         <div class="spec-grid">
           <div><small>Registration</small><b class="num"><?= e((string) $car['reg_number']) ?></b></div>
@@ -129,23 +220,90 @@ renderHeader(vehicleTitle($car), 'cars');
         </div>
       </div>
 
+      <div class="card card-pad" style="margin-top:18px" id="features">
+        <h2 style="font-size:1.2rem">Features (<?= count($features) ?>)</h2>
+        <?php if (!$features): ?><p class="muted">The feature list is being verified for this car.</p><?php endif; ?>
+        <?php foreach (['comfort' => 'Comfort &amp; convenience', 'safety' => 'Safety', 'entertainment' => 'Entertainment &amp; tech', 'exterior' => 'Exterior'] as $cat => $catLabel): ?>
+          <?php if (!empty($featByCat[$cat])): ?>
+            <h3 style="font-size:.95rem;margin:12px 0 6px"><?= $catLabel ?></h3>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <?php foreach ($featByCat[$cat] as $ft): ?><span class="badge ok">&#10003; <?= e($ft) ?></span><?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+        <?php endforeach; ?>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px" id="ownership">
+        <h2 style="font-size:1.2rem">Service, insurance &amp; warranty</h2>
+        <div class="kv"><span>Service history</span><span><?= $history ? (int) $history['service_records'] . ' authorised-service records' : 'See full history report' ?><?= ($history && (int) $history['odometer_verified'] === 1) ? ' &middot; ' . statusBadge('verified') . ' odometer' : '' ?></span></div>
+        <div class="kv"><span>Insurance</span><span class="num"><?= $insDays === null ? 'Not specified' : ($insDays >= 0 ? 'Valid till ' . e(date('M Y', strtotime((string) $car['insurance_valid_till']))) . ' (' . $insDays . ' days left)' : 'Expired - renew at checkout') ?></span></div>
+        <div class="kv"><span>Warranty</span><span><?= ((int) $car['certified'] === 1) ? '12-month DRIVE24 warranty included' : 'Extended warranty available at checkout' ?></span></div>
+      </div>
+
       <?php if ($inspection): ?>
-      <div class="card card-pad" style="margin-top:18px">
+      <div class="card card-pad" style="margin-top:18px" id="condition">
         <h2 style="font-size:1.2rem">280-point inspection report <a class="btn btn-ghost btn-sm" style="float:right" target="_blank" href="<?= e(base('inspection-report.php?listing=' . $id)) ?>">Download</a></h2>
         <p class="muted">Inspected by <?= e((string) $inspection['inspector']) ?> on <?= e(date('d M Y', strtotime((string) $inspection['inspected_on']))) ?> &middot; <?= statusBadge((string) $inspection['status']) ?></p>
         <div class="spec-grid">
           <?php foreach (['engine_score' => 'Engine &amp; transmission', 'exterior_score' => 'Exterior &amp; body', 'interior_score' => 'Interior', 'electrical_score' => 'Electricals', 'tyres_score' => 'Tyres &amp; brakes'] as $key => $label): ?>
-            <div><small><?= $label ?></small><b class="num"><?= (int) $inspection[$key] ?>/100</b></div>
+            <div><small><?= $label ?></small><b class="num"><?= (int) $inspection[$key] ?>/100</b><br><small style="color:#b45309"><?= stars((int) $inspection[$key]) ?></small> <small class="muted"><?= conditionLabel((int) $inspection[$key]) ?></small></div>
           <?php endforeach; ?>
-          <div><small>Overall score</small><b class="num"><?= (int) $inspection['score'] ?>/100</b></div>
+          <div><small>Overall score</small><b class="num"><?= (int) $inspection['score'] ?>/100</b><br><small style="color:#b45309"><?= stars((int) $inspection['score']) ?></small> <small class="muted"><?= conditionLabel((int) $inspection['score']) ?></small></div>
         </div>
         <div class="kv" style="margin-top:10px"><span>Accident history</span><span><?= e((string) $inspection['accident_history']) ?></span></div>
         <div class="kv"><span>Engineer remarks</span><span><?= e((string) $inspection['remarks']) ?></span></div>
       </div>
+      <?php else: ?>
+      <div class="card card-pad" style="margin-top:18px" id="condition">
+        <h2 style="font-size:1.2rem">Condition report</h2>
+        <p class="muted">The 280-point inspection is scheduled for this car - the full scorecard appears here once the engineer submits it.</p>
+        <a class="btn btn-outline btn-sm" href="<?= e(base('inspection.php?listing=' . $id)) ?>">Book your own inspection</a>
+      </div>
       <?php endif; ?>
 
-      <div class="card card-pad" style="margin-top:18px">
+      <div class="card card-pad" style="margin-top:18px" id="history">
+        <h2 style="font-size:1.2rem">History summary</h2>
+        <?php if ($history): ?>
+          <div class="kv"><span>Accidents</span><span><?= (int) $history['accidents'] ?> &middot; <?= e((string) ($history['accident_details'] ?? '')) ?></span></div>
+          <div class="kv"><span>Insurance claims</span><span class="num"><?= (int) $history['insurance_claims'] ?></span></div>
+          <div class="kv"><span>Traffic challans</span><span class="num"><?= (int) $history['challans'] ?> (<?= rupees($history['challan_amount']) ?> settled)</span></div>
+          <div class="kv"><span>Flood / theft record</span><span><?= ((int) $history['flood_damage'] === 1 || (int) $history['theft_record'] === 1) ? statusBadge('flagged') : statusBadge('verified') . ' clean' ?></span></div>
+          <div class="kv"><span>Hypothecation / loan</span><span><?= e((string) ($history['loan_status'] ?? 'No active loan')) ?></span></div>
+          <div class="kv"><span>RC verified</span><span><?= (int) ($history['rc_verified'] ?? 0) === 1 ? statusBadge('verified') : statusBadge('pending') ?></span></div>
+          <div class="kv"><span>Odometer verified</span><span><?= (int) ($history['odometer_verified'] ?? 0) === 1 ? statusBadge('verified') : statusBadge('pending') ?></span></div>
+          <p class="muted"><?= e((string) ($history['report_summary'] ?? '')) ?></p>
+        <?php else: ?>
+          <p class="muted">The history check is in progress for this car.</p>
+        <?php endif; ?>
+        <a class="btn btn-outline btn-sm" href="<?= e(base('history-report.php?listing=' . $id)) ?>">Open full history report</a>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px" id="documents">
+        <h2 style="font-size:1.2rem">Documents available</h2>
+        <?php if (!$listingDocs): ?><p class="muted">The seller is uploading the RC, insurance and service documents. Verified copies are shared before you pay anything.</p><?php endif; ?>
+        <?php foreach ($listingDocs as $dc): ?>
+          <div class="kv"><span><?= e($dc['doc_name']) ?> <small class="muted">(<?= e($dc['doc_type']) ?>)</small></span><span><?= statusBadge((string) $dc['status']) ?></span></div>
+        <?php endforeach; ?>
+        <p class="muted" style="font-size:13px">RC transfer papers (Form 29/30), the tax invoice and the delivery note are issued by DRIVE24 on every order.</p>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px" id="location">
+        <h2 style="font-size:1.2rem">Car location</h2>
+        <div class="kv"><span>Area</span><span><?= e((string) ($car['area'] ?? '-') ?: '-') ?></span></div>
+        <div class="kv"><span>City</span><span><?= e((string) $car['city']) ?></span></div>
+        <div class="kv"><span>Registered in</span><span><?= e((string) $car['reg_state']) ?> (<?= e((string) $car['reg_number']) ?>)</span></div>
+        <p class="muted" style="font-size:13px">The exact parking address and the seller contact are shared after booking. Home test drives are available across the city.</p>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px" id="reviews">
         <h2 style="font-size:1.2rem">Buyer reviews <?= $rating['count'] ? '(★ ' . $rating['avg'] . ' average)' : '' ?></h2>
+        <?php if ($rating['count'] > 0): ?>
+          <div style="max-width:340px;margin:8px 0 4px">
+            <?php foreach ([5, 4, 3, 2, 1] as $st): $pct = $rating['count'] ? (int) round($distMap[$st] * 100 / $rating['count']) : 0; ?>
+              <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px"><span class="num" style="width:26px"><?= $st ?>★</span><div style="flex:1;background:var(--line);border-radius:6px;height:8px"><div style="width:<?= $pct ?>%;background:#f59e0b;height:8px;border-radius:6px"></div></div><span class="num muted"><?= $distMap[$st] ?></span></div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
         <?php if (!$reviews): ?><p class="muted">No reviews yet - be the first verified buyer to rate this car.</p><?php endif; ?>
         <?php foreach ($reviews as $rv): ?>
           <div style="border-bottom:1px solid var(--line);padding:10px 0">
@@ -166,7 +324,27 @@ renderHeader(vehicleTitle($car), 'cars');
         <?php endif; ?>
       </div>
 
-      <div class="card card-pad" style="margin-top:18px">
+      <div class="card card-pad" style="margin-top:18px" id="qa">
+        <h2 style="font-size:1.2rem">Questions &amp; answers (<?= count($questions) ?>)</h2>
+        <?php if (!$questions): ?><p class="muted">No questions yet - ask the seller anything about this car.</p><?php endif; ?>
+        <?php foreach ($questions as $qa): ?>
+          <div style="border-bottom:1px solid var(--line);padding:10px 0">
+            <div><b>Q:</b> <?= e($qa['question']) ?> <small class="muted">- <?= e($qa['asker']) ?></small></div>
+            <?php if (!empty($qa['answer'])): ?>
+              <div style="margin-top:4px"><b>A:</b> <?= e($qa['answer']) ?> <small class="muted">(seller)</small></div>
+            <?php else: ?>
+              <div style="margin-top:4px"><small class="muted">Waiting for the seller's answer.</small></div>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+        <form method="post" class="grid" style="gap:10px;margin-top:12px">
+          <?= csrfField() ?><input type="hidden" name="action" value="question">
+          <div><label class="form-label">Ask the seller</label><input class="form-control" name="question" maxlength="500" placeholder="e.g. Is the second key available?" required></div>
+          <div><button class="btn btn-dark btn-sm" type="submit">Post question</button></div>
+        </form>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px" id="testdrive">
         <h2 style="font-size:1.2rem">Book a test drive</h2>
         <form method="post" class="grid" style="grid-template-columns:repeat(2,1fr);gap:12px">
           <?= csrfField() ?><input type="hidden" name="action" value="testdrive">
@@ -185,6 +363,25 @@ renderHeader(vehicleTitle($car), 'cars');
     </div>
 
     <aside>
+      <?php if ($auction): ?>
+      <div class="card card-pad" style="margin-bottom:18px;border:2px solid #f59e0b">
+        <h3 style="font-size:1.05rem">&#128296; Live auction</h3>
+        <?php if ($auctionLive): ?>
+          <div class="kv"><span>Top bid</span><b class="num"><?= $topBid > 0 ? rupees($topBid) : 'No bids yet' ?></b></div>
+          <div class="kv"><span>Bids</span><span class="num"><?= $bidCount ?></span></div>
+          <?php if (!empty($car['auction_ends_at'])): ?><div class="kv"><span>Ends at</span><span class="num"><?= e(date('d M, h:i A', strtotime((string) $car['auction_ends_at']))) ?></span></div><?php endif; ?>
+          <?php if ($myTopBid > 0): ?><div class="kv"><span>Your best</span><span class="num"><?= rupees($myTopBid) ?></span></div><?php endif; ?>
+          <form method="post" style="margin-top:10px">
+            <?= csrfField() ?><input type="hidden" name="action" value="bid">
+            <label class="form-label">Your bid (min <?= rupees($minBid) ?>)</label>
+            <input class="form-control num" type="number" name="amount" min="<?= (int) $minBid ?>" step="1000" value="<?= (int) $minBid ?>" required>
+            <button class="btn btn-primary btn-block" style="margin-top:10px" type="submit">Place bid</button>
+          </form>
+        <?php else: ?>
+          <p class="muted">This auction ended<?= !empty($car['auction_ends_at']) ? ' on ' . e(date('d M Y', strtotime((string) $car['auction_ends_at']))) : '' ?>.<?= $topBid > 0 ? ' Winning bid: <b class="num">' . rupees($topBid) . '</b>' : '' ?></p>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
       <div class="card card-pad sticky">
         <div class="price num" style="font-size:1.7rem;font-weight:800"><?= rupees($car['price']) ?></div>
         <?php if ($car['original_price'] && (float) $car['original_price'] > (float) $car['price']): ?>
@@ -207,6 +404,28 @@ renderHeader(vehicleTitle($car), 'cars');
         <div class="kv"><span>Seller rating</span><span class="num"><?= $sellerRate['count'] ? '★ ' . $sellerRate['avg'] . ' (' . $sellerRate['count'] . ')' : 'New seller' ?></span></div>
         <div class="kv"><span>Inspection score</span><span class="num"><?= (int) $car['inspection_score'] ?>/100</span></div>
         <div class="kv"><span>Certified</span><span><?= ((int) $car['certified'] === 1) ? statusBadge('verified') : statusBadge('pending') ?></span></div>
+        <div class="kv"><span>Member since</span><span class="num"><?= e(date('M Y', strtotime((string) ($car['seller_since'] ?? 'now')))) ?></span></div>
+        <div class="kv"><span>KYC</span><span><?= statusBadge((string) ($car['seller_kyc'] ?? 'pending')) ?></span></div>
+        <div class="kv"><span>Cars sold</span><span class="num"><?= $sellerSold ?></span></div>
+        <div class="kv"><span>Responds to</span><span class="num"><?= $sellerResp ?>% of offers</span></div>
+        <div style="margin-top:10px"><a class="btn btn-ghost btn-sm" href="<?= e(base('cars.php?seller=' . $sellerId)) ?>">All cars by this seller</a></div>
+        <details style="margin-top:10px">
+          <summary class="muted" style="cursor:pointer;font-size:13px">Report this listing</summary>
+          <form method="post" style="margin-top:8px">
+            <?= csrfField() ?><input type="hidden" name="action" value="report">
+            <label class="form-label">Reason</label>
+            <select class="form-select" name="reason"><option value="wrong-details">Wrong details or photos</option><option value="price">Suspicious price / advance demand</option><option value="sold">Already sold elsewhere</option><option value="fraud">Fraud / scam</option><option value="other">Other</option></select>
+            <label class="form-label" style="margin-top:8px">Details</label>
+            <textarea class="form-control" name="details" rows="2"></textarea>
+            <button class="btn btn-outline btn-sm" style="margin-top:8px" type="submit">Submit report</button>
+          </form>
+        </details>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px">
+        <h3 style="font-size:1.05rem">Exchange your old car</h3>
+        <p class="muted" style="font-size:13px">Extra exchange bonus up to &#8377;20,000 on this car.</p>
+        <a class="btn btn-outline btn-block btn-sm" href="<?= e(base('exchange.php?listing=' . $id)) ?>">Get exchange quote</a>
       </div>
 
       <div class="card card-pad" style="margin-top:18px" data-emi-price="<?= (int) $car['price'] ?>">

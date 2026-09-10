@@ -62,6 +62,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'vin' => trim((string) ($_POST['vin'] ?? '')), 'engine_cc' => (int) ($_POST['engine_cc'] ?? 0),
             'power_bhp' => trim((string) ($_POST['power_bhp'] ?? '')), 'mileage_kmpl' => (float) ($_POST['mileage_kmpl'] ?? 0),
             'seats' => (int) ($_POST['seats'] ?? 5), 'city' => trim((string) ($_POST['city'] ?? '')),
+            'area' => trim((string) ($_POST['area'] ?? '')),
             'image' => $uploaded !== [] ? 'uploads/' . $uploaded[0]['file'] : 'car' . random_int(1, 6) . '.svg',
             'description' => trim((string) ($_POST['description'] ?? '')),
         ]);
@@ -152,6 +153,7 @@ renderHeader('Sell your car', 'sell');
           <div><label class="form-label">Mileage (kmpl)</label><input class="form-control num" type="number" step="0.1" name="mileage_kmpl"></div>
           <div><label class="form-label">Seats</label><input class="form-control num" type="number" name="seats" value="5"></div>
           <div><label class="form-label">City</label><input class="form-control" name="city"></div>
+          <div><label class="form-label">Area / locality</label><input class="form-control" name="area" placeholder="e.g. Andheri West"></div>
           <div><label class="form-label">Expected price</label><input class="form-control num" type="number" name="price" required></div>
           <div style="grid-column:1/-1"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3"></textarea></div>
           <div style="grid-column:1/-1"><button class="btn btn-dark btn-lg" type="submit">Submit listing for approval</button></div>

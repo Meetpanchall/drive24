@@ -39,6 +39,9 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
             'offers'     => ['Offers', 'seller/offers.php'],
             'orders'     => ['Sales orders', 'seller/orders.php'],
             'testdrives' => ['Test drives', 'seller/testdrives.php'],
+            'questions'  => ['Buyer questions', 'seller/questions.php'],
+            'documents'  => ['Documents', 'seller/documents.php'],
+            'kyc'        => ['KYC verification', 'seller/kyc.php'],
             'payouts'    => ['Payouts', 'seller/payouts.php'],
         ],
         'Shortcuts' => [

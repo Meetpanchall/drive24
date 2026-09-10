@@ -25,7 +25,8 @@ $steps[] = ['MySQL connection (' . $connLabel . ')', $connected];
 $tables = ['users', 'vehicles', 'listings', 'wishlists', 'saved_searches', 'offers', 'test_drives',
     'inspections', 'orders', 'payments', 'payouts', 'documents', 'leads', 'support_tickets', 'activity_log',
     'listing_images', 'reviews', 'chat_threads', 'chat_messages', 'loan_applications', 'insurance_quotes',
-    'inspection_bookings', 'vehicle_history', 'notifications', 'password_resets', 'otp_codes', 'escrow_ledger'];
+    'inspection_bookings', 'vehicle_history', 'notifications', 'password_resets', 'otp_codes', 'escrow_ledger',
+    'vehicle_features', 'rc_transfers', 'bids', 'questions'];
 $missing = [];
 if ($connected) {
     foreach ($tables as $t) {

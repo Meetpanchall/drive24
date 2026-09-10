@@ -16,7 +16,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 $rows = fetchAll("SELECT u.*,
     (SELECT COUNT(*) FROM orders o WHERE o.buyer_id = u.id) AS orders,
     (SELECT COALESCE(SUM(o.amount),0) FROM orders o WHERE o.buyer_id = u.id) AS spend,
-    (SELECT COUNT(*) FROM wishlists w WHERE w.user_id = u.id) AS saved
+    (SELECT COUNT(*) FROM wishlists w WHERE w.user_id = u.id) AS saved,
+    (SELECT COUNT(*) FROM support_tickets t WHERE t.user_id = u.id) AS tickets,
+    (SELECT COUNT(*) FROM test_drives t WHERE t.user_id = u.id) AS drives
     FROM users u WHERE u.role = 'buyer' ORDER BY spend DESC, u.id DESC");
 
 adminHeader('Customer management', 'customers');
@@ -27,9 +29,9 @@ adminHeader('Customer management', 'customers');
   <div class="kpi"><small>Lifetime value</small><b class="num"><?= rupees(array_sum(array_map(static fn ($r) => (float) $r['spend'], $rows))) ?></b></div>
 </div>
 <div class="table-wrap" style="margin-top:14px"><table class="data">
-  <thead><tr><th>#</th><th>Customer</th><th>City</th><th>Orders</th><th>Spend</th><th>Saved cars</th><th>KYC</th><th>Status</th></tr></thead>
+  <thead><tr><th>#</th><th>Customer</th><th>City</th><th>Orders</th><th>Spend</th><th>Saved</th><th>Drives</th><th>Tickets</th><th>KYC</th><th>Status</th></tr></thead>
   <tbody>
-  <?php if (!$rows): ?><tr><td colspan="8" class="empty">No customers yet.</td></tr><?php endif; ?>
+  <?php if (!$rows): ?><tr><td colspan="10" class="empty">No customers yet.</td></tr><?php endif; ?>
   <?php foreach ($rows as $r): ?>
     <tr><td class="num"><?= (int) $r['id'] ?></td>
       <td><b><?= e((string) $r['name']) ?></b><div class="muted" style="font-size:12.4px"><?= e((string) $r['email']) ?> &middot; <?= e((string) ($r['mobile'] ?? '')) ?></div></td>
@@ -37,6 +39,8 @@ adminHeader('Customer management', 'customers');
       <td class="num"><?= (int) $r['orders'] ?></td>
       <td class="num"><?= rupees($r['spend']) ?></td>
       <td class="num"><?= (int) $r['saved'] ?></td>
+      <td class="num"><?= (int) $r['drives'] ?></td>
+      <td class="num"><?= (int) $r['tickets'] ?></td>
       <td><?= statusBadge((string) $r['kyc_status']) ?></td>
       <td><form method="post" style="display:flex;gap:6px">
         <?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $r['id'] ?>">

@@ -18,6 +18,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'rejection_note' => null,
             ], 'id = ?', [$id]);
             notify((int) $listing['seller_id'], 'Listing approved', 'Your car is now live on DRIVE24.', 'seller/listings.php');
+            alertSavedSearches($id);
             logActivity((int) $admin['id'], 'listing.approved', '#' . $id);
             flash('success', 'Listing #' . $id . ' is now live.');
         } elseif ($action === 'reject') {

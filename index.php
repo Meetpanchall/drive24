@@ -10,6 +10,7 @@ $stats = [
     'orders'  => dbReady() ? (int) fetchValue('SELECT COUNT(*) FROM orders') : 0,
     'sellers' => dbReady() ? (int) fetchValue("SELECT COUNT(*) FROM users WHERE role IN ('seller','dealer')") : 0,
 ];
+$auctions = dbReady() ? fetchAll(LISTING_SELECT . " WHERE l.status = 'approved' AND l.auction_enabled = 1 AND (l.auction_ends_at IS NULL OR l.auction_ends_at >= NOW()) ORDER BY l.auction_ends_at ASC LIMIT 3") : [];
 $makes = filterOptions('make');
 $bodies = filterOptions('body_type');
 $cities = filterOptions('city');
@@ -72,6 +73,26 @@ renderHeader('Buy and sell used cars online', 'home');
   <div class="grid cars"><?php foreach ($featured as $r) { carCard($r, $wish, $cmp); } ?></div>
 </section>
 
+<?php if ($auctions): ?>
+<section class="wrap section">
+  <div class="reveal" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h2 class="sec-title">Live auctions ending soon</h2>
+    <a class="btn btn-ghost btn-sm" style="margin-left:auto" href="<?= e(base('cars.php')) ?>">All cars &rarr;</a>
+  </div>
+  <div class="grid cars"><?php foreach ($auctions as $r) { carCard($r, $wish, $cmp); } ?></div>
+</section>
+<?php endif; ?>
+
+<section class="wrap section">
+  <h2 class="sec-title reveal">How it works</h2>
+  <div class="steps">
+    <div class="step done">1. Search &amp; compare</div>
+    <div class="step done">2. Test drive at home</div>
+    <div class="step active">3. Finance &amp; pay securely</div>
+    <div class="step">4. Doorstep delivery + RC transfer</div>
+  </div>
+</section>
+
 <section class="wrap section">
   <h2 class="sec-title reveal">Why 2 lakh+ buyers choose DRIVE24</h2>
   <div class="grid four">
@@ -98,6 +119,37 @@ renderHeader('Buy and sell used cars online', 'home');
       <a class="btn btn-primary btn-block" style="margin-top:14px" href="<?= e(base('sell.php')) ?>">Get car valuation</a>
       <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('finance.php')) ?>">Check EMI eligibility</a>
     </aside>
+  </div>
+</section>
+<section class="wrap section">
+  <h2 class="sec-title reveal">What our customers say</h2>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="card card-pad"><div style="color:#b45309">&#9733;&#9733;&#9733;&#9733;&#9733;</div><p>"The inspection report matched the car perfectly. RC transfer finished in 24 days without a single RTO visit."</p><b>Meet P.</b> <small class="muted">bought a Swift in Ahmedabad</small></div>
+    <div class="card card-pad"><div style="color:#b45309">&#9733;&#9733;&#9733;&#9733;&#9733;</div><p>"Sold my i20 in one day - doorstep evaluation in the morning, money in the account by evening."</p><b>Riya S.</b> <small class="muted">sold in Pune</small></div>
+    <div class="card card-pad"><div style="color:#b45309">&#9733;&#9733;&#9733;&#9733;&#9734;</div><p>"Loan approved in a day and the exchange bonus covered my insurance. Genuinely zero-hassle buying."</p><b>Karan M.</b> <small class="muted">bought a City in Delhi</small></div>
+  </div>
+</section>
+
+<section class="wrap section">
+  <h2 class="sec-title reveal">Finance &amp; insurance partners</h2>
+  <div class="marquee" aria-hidden="true"><div class="track">
+    <?php $lenders = ['HDFC Bank', 'ICICI Bank', 'Axis Bank', 'SBI', 'Bajaj Finserv', 'Tata Capital', 'Cholamandalam', 'ICICI Lombard', 'HDFC Ergo']; ?>
+    <?php for ($rep = 0; $rep < 2; $rep++): foreach ($lenders as $b): ?>
+      <span><?= e($b) ?></span><span class="dot">&#9679;</span>
+    <?php endforeach; endfor; ?>
+  </div></div>
+</section>
+
+<section class="wrap section">
+  <div class="card card-pad reveal" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:var(--surface-low);border-color:#bfdbfe">
+    <div style="flex:1;min-width:240px">
+      <h2 class="sec-title reveal">Get the DRIVE24 app</h2>
+      <p class="muted">Price-drop alerts, live auction bids and order tracking on your phone.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <span class="badge info">Android - coming soon</span><span class="badge info">iOS - coming soon</span>
+      </div>
+    </div>
+    <div class="num" style="font-size:1rem">SMS <b>DRIVE24</b> to <b>56767</b> to get the download link</div>
   </div>
 </section>
 <?php renderFooter(); ?>

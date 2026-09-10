@@ -29,6 +29,7 @@ $filters = [
     'year_from' => (string) ($_GET['year_from'] ?? ''),
     'km_max' => (string) ($_GET['km_max'] ?? ''),
     'owners' => (string) ($_GET['owners'] ?? ''),
+    'seller_id' => (int) ($_GET['seller'] ?? 0),
     'sort' => (string) ($_GET['sort'] ?? ''),
 ];
 $perPage = 9;
