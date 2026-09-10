@@ -26,7 +26,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 redirect(base('account.php'));
             }
         } else {
-            $error = 'Incorrect email or password.';
+            // Help users who imported the schema but skipped the install.php password step.
+            $placeholder = str_starts_with((string) ($row['password_hash'] ?? ''), '$2y$10$e0NRzC0m0Qm2m0iQ1kQ0t');
+            $error = $placeholder
+                ? 'Demo passwords are not activated yet. Open install.php and click "Set all demo passwords to Drive24@2026", then sign in again.'
+                : 'Incorrect email or password.';
         }
     }
 }

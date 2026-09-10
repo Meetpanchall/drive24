@@ -190,9 +190,9 @@ CREATE TABLE activity_log (
 
 -- ---------------------------------------------------------
 -- Demo data. Every demo account password is: Drive24@2026
--- (open install.php once to (re)generate the hashes safely)
+-- (bcrypt hash below is pre-generated, so logins work right after import)
 -- ---------------------------------------------------------
-SET @pw := '$2y$10$e0NRzC0m0Qm2m0iQ1kQ0tehIB7Yy2Yk8kR9Q9gk4Zx3ZgP0m2u1Hy';
+SET @pw := '$2b$10$lwPYxJAMLgTozbbew3lk1ulYTvF8HhDJenM5o4wc0SGyLhvkxpw4.';
 
 INSERT INTO users (name,email,mobile,password_hash,role,city,company,kyc_status) VALUES
 ('DRIVE24 Admin','admin@drive24.in','9820000001',@pw,'admin','Mumbai',NULL,'verified'),
