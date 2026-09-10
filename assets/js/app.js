@@ -175,3 +175,108 @@
     }, 6000);
   }
 })();
+
+/* Motion engine: scroll reveals, counters, header state, back-to-top, hero parallax */
+(function () {
+  document.documentElement.classList.add('js');
+
+  // auto-reveal animated entrances across all pages
+  var auto = document.querySelectorAll('.car-card, .kpi, .grid.four > *, .spec-grid > div, .chat-row');
+  auto.forEach(function (el) { el.classList.add('reveal'); });
+
+  // stagger siblings so grids cascade nicely
+  document.querySelectorAll('.grid, .kpis, .spec-grid, .hero-stats').forEach(function (parent) {
+    var kids = parent.querySelectorAll(':scope > .reveal');
+    kids.forEach(function (k, i) {
+      if (!k.hasAttribute('data-delay')) { k.style.transitionDelay = Math.min(i * 70, 560) + 'ms'; }
+    });
+  });
+
+  // reveal on scroll
+  var revealEls = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && revealEls.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('visible'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  } else {
+    revealEls.forEach(function (el) { el.classList.add('visible'); });
+  }
+
+  // animated counters with Indian digit grouping
+  function inr(n) {
+    n = Math.round(n);
+    var s = String(Math.abs(n));
+    if (s.length > 3) {
+      var last3 = s.slice(-3), rest = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+      s = rest + ',' + last3;
+    }
+    return (n < 0 ? '-' : '') + s;
+  }
+  var counters = document.querySelectorAll('[data-count]');
+  function runCounter(el) {
+    var target = Number(el.getAttribute('data-count') || 0);
+    var dur = 1400, t0 = null;
+    function tick(t) {
+      if (!t0) { t0 = t; }
+      var p = Math.min((t - t0) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = inr(target * eased);
+      if (p < 1) { requestAnimationFrame(tick); }
+    }
+    requestAnimationFrame(tick);
+  }
+  if ('IntersectionObserver' in window && counters.length) {
+    var cio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { runCounter(en.target); cio.unobserve(en.target); }
+      });
+    }, { threshold: 0.4 });
+    counters.forEach(function (el) { cio.observe(el); });
+  } else {
+    counters.forEach(runCounter);
+  }
+
+  // header shadow + back-to-top on scroll
+  var head = document.querySelector('.site-head');
+  var toTop = document.createElement('button');
+  toTop.id = 'toTop';
+  toTop.type = 'button';
+  toTop.title = 'Back to top';
+  toTop.setAttribute('aria-label', 'Back to top');
+  toTop.textContent = '\u2191';
+  document.body.appendChild(toTop);
+  toTop.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  function onScroll() {
+    var y = window.scrollY || 0;
+    if (head) { head.classList.toggle('scrolled', y > 12); }
+    toTop.classList.toggle('show', y > 600);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // subtle hero parallax on mouse move
+  var hero = document.querySelector('.hero');
+  if (hero && window.matchMedia('(pointer:fine)').matches) {
+    var layers = hero.querySelectorAll('[data-depth]');
+    hero.addEventListener('mousemove', function (ev) {
+      var r = hero.getBoundingClientRect();
+      var x = (ev.clientX - r.left) / r.width - 0.5;
+      var y = (ev.clientY - r.top) / r.height - 0.5;
+      layers.forEach(function (l) {
+        var d = Number(l.getAttribute('data-depth') || 10);
+        l.style.translate = (-x * d) + 'px ' + (-y * d) + 'px';
+      });
+    });
+  }
+
+  // gallery crossfade
+  document.querySelectorAll('[data-gal]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var main = document.getElementById('galMain');
+      if (main) { main.style.animation = 'none'; void main.offsetWidth; main.style.animation = ''; }
+    });
+  });
+})();

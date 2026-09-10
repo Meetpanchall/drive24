@@ -73,7 +73,7 @@ function carCard(array $r, array $wish = [], array $cmp = []): void
         <a href="<?= e(base('car.php?id=' . (int) $r['id'])) ?>"><img src="<?= e(listingThumb($r)) ?>" alt="<?= e(vehicleTitle($r)) ?>" loading="lazy"></a>
         <div class="tag-float">
           <?php if ((int) $r['certified'] === 1): ?><span class="badge ok">Certified</span><?php endif; ?>
-          <?php if ((int) $r['featured'] === 1): ?><span class="badge info">Featured</span><?php endif; ?>
+          <?php if ((int) $r['featured'] === 1): ?><span class="badge info glow">Featured</span><?php endif; ?>
         </div>
         <button class="fav <?= $saved ? 'on' : '' ?>" type="button" data-wishlist="<?= (int) $r['id'] ?>" aria-pressed="<?= $saved ? 'true' : 'false' ?>" aria-label="Save car">&#10084;</button>
       </div>
