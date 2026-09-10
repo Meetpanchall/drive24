@@ -1,0 +1,40 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: drive24-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: drive24
+      MYSQL_USER: drive24
+      MYSQL_PASSWORD: drive24pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - drive24-data:/var/lib/mysql
+
+  web:
+    image: php:8.2-apache
+    container_name: drive24-web
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: drive24
+      DB_USER: drive24
+      DB_PASS: drive24pass
+      APP_DEBUG: "1"
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    command: >
+      bash -lc "docker-php-ext-install pdo pdo_mysql >/dev/null 2>&1;
+      a2enmod rewrite >/dev/null 2>&1;
+      apache2-foreground"
+
+volumes:
+  drive24-data:

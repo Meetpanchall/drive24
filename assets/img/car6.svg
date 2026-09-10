@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+<defs><linearGradient id="bg6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b91c1c"/><stop offset="1" stop-color="#fca5a5"/></linearGradient>
+<linearGradient id="body6" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset="1" stop-color="#e2e8f0"/></linearGradient></defs>
+<rect width="800" height="500" fill="url(#bg6)"/>
+<circle cx="650" cy="110" r="120" fill="#ffffff" opacity=".10"/>
+<circle cx="120" cy="430" r="150" fill="#ffffff" opacity=".08"/>
+<g transform="translate(70,150)">
+<path d="M40 190 L70 120 Q90 82 140 78 L390 78 Q440 80 470 116 L540 176 L620 190 Q660 196 660 226 L660 258 Q660 272 644 272 L40 272 Q22 272 22 254 L22 214 Q22 194 40 190 Z" fill="url(#body6)"/>
+<path d="M148 108 L360 108 Q392 108 412 132 L452 176 L148 176 Z" fill="#0f172a" opacity=".78"/>
+<rect x="22" y="196" width="638" height="14" fill="#0f172a" opacity=".12"/>
+<circle cx="170" cy="272" r="56" fill="#0f172a"/><circle cx="170" cy="272" r="25" fill="#cbd5e1"/>
+<circle cx="520" cy="272" r="56" fill="#0f172a"/><circle cx="520" cy="272" r="25" fill="#cbd5e1"/>
+<rect x="612" y="206" width="46" height="18" rx="9" fill="#fbbf24"/>
+<rect x="24" y="210" width="36" height="14" rx="7" fill="#ef4444" opacity=".85"/>
+</g>
+<text x="48" y="70" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#ffffff" opacity=".92">Toyota Innova</text>
+<text x="48" y="104" font-family="Inter,Arial,sans-serif" font-size="20" fill="#ffffff" opacity=".7">DRIVE24 certified &#183; 280-point inspected</text>
+</svg>
