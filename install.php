@@ -8,7 +8,19 @@ $steps[] = ['PHP version ' . PHP_VERSION, version_compare(PHP_VERSION, '8.0.0', 
 $steps[] = ['PDO MySQL driver', extension_loaded('pdo_mysql')];
 
 $connected = dbReady();
-$steps[] = ['MySQL connection (' . config('db_host') . ':' . config('db_port') . '/' . config('db_name') . ')', $connected];
+
+// Always inspect the database we are ACTUALLY connected to - never trust a
+// possibly edited config value for the schema name.
+$liveDb = '';
+$serverInfo = '';
+if ($connected) {
+    try {
+        $liveDb = (string) db()->query('SELECT DATABASE()')->fetchColumn();
+        $serverInfo = (string) db()->getAttribute(PDO::ATTR_CONNECTION_STATUS);
+    } catch (Throwable $e) { $connected = false; }
+}
+$connLabel = $connected ? ($serverInfo !== '' ? $serverInfo . ' / ' : '') . $liveDb : 'not connected';
+$steps[] = ['MySQL connection (' . $connLabel . ')', $connected];
 
 $tables = ['users', 'vehicles', 'listings', 'wishlists', 'saved_searches', 'offers', 'test_drives',
     'inspections', 'orders', 'payments', 'payouts', 'documents', 'leads', 'support_tickets', 'activity_log',
@@ -17,7 +29,7 @@ $tables = ['users', 'vehicles', 'listings', 'wishlists', 'saved_searches', 'offe
 $missing = [];
 if ($connected) {
     foreach ($tables as $t) {
-        $exists = (int) fetchValue('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?', [config('db_name'), $t], 0);
+        $exists = (int) fetchValue('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?', [$liveDb, $t], 0);
         if ($exists === 0) { $missing[] = $t; }
     }
     $steps[] = [count($tables) . ' tables imported', $missing === [], $missing ? 'Missing: ' . implode(', ', $missing) : ''];

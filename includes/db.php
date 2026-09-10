@@ -6,7 +6,9 @@ function config(?string $key = null): mixed
     static $config = null;
     if ($config === null) { $config = require __DIR__ . '/../config/config.php'; }
     if ($key === null) { return $config; }
-    if (array_key_exists($key, $config)) { return $config[$key]; }
+    // Ignore empty top-level values (e.g. user-added 'db_host' => '') so they
+    // can never shadow the real nested settings with blanks.
+    if (array_key_exists($key, $config) && $config[$key] !== null && $config[$key] !== '' && $config[$key] !== false) { return $config[$key]; }
     // Scalar shortcuts: config('db_host') -> $config['db']['host']
     if (str_starts_with($key, 'db_')) { return $config['db'][substr($key, 3)] ?? null; }
     if (str_contains($key, '.')) {
