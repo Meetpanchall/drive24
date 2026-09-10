@@ -45,7 +45,7 @@ renderHeader('Sign in', '');
 <div class="wrap">
   <div class="auth-wrap reg-wrap login-wrap">
     <div class="auth-side reg-side">
-      <a href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-word-white.svg')) ?>" alt="DRIVE24" height="38"></a>
+      <a href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-brand-white.svg')) ?>" alt="Drive24 - Rent, Drive, Explore" height="52"></a>
       <div class="login-tag">BUY <span>&bull;</span> SELL <span>&bull;</span> TRADE</div>
       <h2>Welcome Back to<br><span class="hl">DRIVE24</span></h2>
       <p class="reg-sub">Your trusted platform for buying, selling, financing and RC transfer. Drive your dream today!</p>

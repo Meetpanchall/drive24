@@ -25,7 +25,7 @@ function renderHeader(string $title, string $active = ''): void
 <header class="site-head">
   <div class="wrap bar">
     <button class="menu-btn" type="button" aria-label="Menu">&#9776;</button>
-    <a class="brand-logo" href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-word.svg')) ?>" alt="DRIVE24" height="32"></a>
+    <a class="brand-logo" href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-brand.svg')) ?>" alt="Drive24 - Rent, Drive, Explore" height="44"></a>
     <nav class="nav" aria-label="Primary">
       <?php foreach ($nav as $key => $item): ?>
         <a class="<?= $active === $key ? 'active' : '' ?>" href="<?= e(base($item[1])) ?>"><?= e($item[0]) ?></a>
@@ -71,7 +71,7 @@ function renderFooter(): void
   <div class="wrap">
     <div class="foot-grid">
       <div class="foot-brand">
-        <a href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-word-white.svg')) ?>" alt="DRIVE24" height="34"></a>
+        <a href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-brand-white.svg')) ?>" alt="Drive24 - Rent, Drive, Explore" height="46"></a>
         <p>India's trusted used-car marketplace. Every car passes a 280-point inspection, comes with a verified history report and 7-day money-back promise.</p>
         <div class="socials">
           <a href="#" aria-label="Facebook" title="Facebook"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.7c0-.9.3-1.6 1.7-1.6h1.7V4.2c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.6H7.8V14h2.7v8z"/></svg></a>

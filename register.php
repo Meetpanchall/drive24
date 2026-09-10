@@ -47,7 +47,7 @@ renderHeader('Create account', '');
 <div class="wrap">
   <div class="auth-wrap reg-wrap">
     <div class="auth-side reg-side">
-      <a href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-word-white.svg')) ?>" alt="DRIVE24" height="38"></a>
+      <a href="<?= e(base('index.php')) ?>" aria-label="DRIVE24 home"><img src="<?= e(base('assets/img/logo-brand-white.svg')) ?>" alt="Drive24 - Rent, Drive, Explore" height="52"></a>
       <h2>Join India's Trusted<br><span class="hl">Used-Car Marketplace</span></h2>
       <p class="reg-sub">Buy, sell and trade cars with confidence.<br>Verified cars <span class="dot">&bull;</span> Transparent deals <span class="dot">&bull;</span> Hassle-free process</p>
       <ul class="reg-feats">

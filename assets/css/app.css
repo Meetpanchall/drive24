@@ -290,7 +290,7 @@ img{user-select:none}
 .site-head{background:#fff;border-bottom:1px solid var(--line)}
 .site-head .bar{gap:20px;height:68px}
 .brand-logo{display:inline-flex;align-items:center;flex:none}
-.brand-logo img{height:32px;width:auto}
+.brand-logo img{height:44px;width:auto}
 .brand-logo:hover{text-decoration:none}
 .nav{margin-left:4px}
 .nav a{color:#33415c;font-weight:600;font-size:14.5px;padding:9px 13px;border-radius:10px;white-space:nowrap}
@@ -310,7 +310,7 @@ img{user-select:none}
 @media(max-width:1180px){.head-search{display:none}}
 @media(max-width:900px){
   .site-head .bar{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px;row-gap:10px}
-  .brand-logo img{height:28px}
+  .brand-logo img{height:36px}
   .head-actions{flex-wrap:wrap;gap:10px}
   .nav{top:100%}
 }
