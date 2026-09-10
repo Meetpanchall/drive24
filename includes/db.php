@@ -1,11 +1,19 @@
 <?php
 declare(strict_types=1);
 
-function config(?string $group = null): array
+function config(?string $key = null): mixed
 {
     static $config = null;
     if ($config === null) { $config = require __DIR__ . '/../config/config.php'; }
-    return $group !== null ? ($config[$group] ?? []) : $config;
+    if ($key === null) { return $config; }
+    if (array_key_exists($key, $config)) { return $config[$key]; }
+    // Scalar shortcuts: config('db_host') -> $config['db']['host']
+    if (str_starts_with($key, 'db_')) { return $config['db'][substr($key, 3)] ?? null; }
+    if (str_contains($key, '.')) {
+        [$group, $name] = explode('.', $key, 2);
+        return $config[$group][$name] ?? null;
+    }
+    return null;
 }
 
 /** Shared PDO connection (real prepared statements). */
