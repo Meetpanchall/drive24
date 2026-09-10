@@ -306,3 +306,13 @@
     });
   });
 })();
+
+/* services page: clicking a service card preselects it in the request form */
+(function () {
+  document.querySelectorAll('[data-svc]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      var sel = document.getElementById('svcSelect');
+      if (sel) { sel.value = card.getAttribute('data-svc'); }
+    });
+  });
+})();
