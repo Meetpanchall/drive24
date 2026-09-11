@@ -7,14 +7,18 @@ $id = (int) ($_GET['id'] ?? 0);
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
     if (($_POST['action'] ?? '') === 'cancel') {
-        q("UPDATE orders SET status = 'cancelled' WHERE id = ? AND buyer_id = ? AND status IN ('pending','confirmed')", [$id, $u['id']]);
-        q("UPDATE listings l JOIN orders o ON o.listing_id = l.id SET l.status = 'approved' WHERE o.id = ?", [$id]);
-        $held = (float) fetchValue("SELECT COALESCE(SUM(amount),0) FROM escrow_ledger WHERE order_id = ? AND kind = 'hold'", [$id], 0);
-        if ($held > 0) {
-            insert('escrow_ledger', ['order_id' => $id, 'kind' => 'refund', 'amount' => $held, 'note' => 'Escrow refunded on cancellation']);
-            q("UPDATE payments SET status = 'refunded' WHERE order_id = ? AND status = 'paid'", [$id]);
+        $stmt = q("UPDATE orders SET status = 'cancelled' WHERE id = ? AND buyer_id = ? AND status IN ('pending','confirmed')", [$id, $u['id']]);
+        if ($stmt->rowCount() > 0) {
+            q("UPDATE listings l JOIN orders o ON o.listing_id = l.id SET l.status = 'approved' WHERE o.id = ?", [$id]);
+            $held = (float) fetchValue("SELECT COALESCE(SUM(amount),0) FROM escrow_ledger WHERE order_id = ? AND kind = 'hold'", [$id], 0);
+            if ($held > 0) {
+                insert('escrow_ledger', ['order_id' => $id, 'kind' => 'refund', 'amount' => $held, 'note' => 'Escrow refunded on cancellation']);
+                q("UPDATE payments SET status = 'refunded' WHERE order_id = ? AND status = 'paid'", [$id]);
+            }
+            flash('success', 'Order cancelled, escrow refunded and the car returned to inventory.');
+        } else {
+            flash('error', 'Only payment-pending or confirmed orders can be cancelled.');
         }
-        flash('success', 'Order cancelled, escrow refunded and the car returned to inventory.');
     } elseif (($_POST['action'] ?? '') === 'return') {
         $ord = fetchOne('SELECT o.*, l.seller_id FROM orders o JOIN listings l ON l.id = o.listing_id WHERE o.id = ? AND o.buyer_id = ?', [$id, $u['id']]);
         $within = $ord && !empty($ord['delivery_date']) && (time() - strtotime((string) $ord['delivery_date'])) <= 7 * 86400;

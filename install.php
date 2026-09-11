@@ -40,10 +40,18 @@ if ($connected) {
 foreach ($steps as $s) { if (!$s[1]) { $ok = false; } }
 
 $rehashed = 0;
+// Security: only seed accounts that still carry the unusable placeholder hash
+// are reset. Real user/admin passwords set via register/reset are never
+// touched, so leaving this file up cannot be abused to take over accounts.
+// (Still: delete install.php from production once setup is done.)
 if ($connected && $missing === [] && ($_GET['rehash'] ?? '') === '1') {
     $hash = password_hash('Drive24@2026', PASSWORD_DEFAULT);
-    q('UPDATE users SET password_hash = ?', [$hash]);
-    $rehashed = (int) fetchValue('SELECT COUNT(*) FROM users', [], 0);
+    foreach (fetchAll('SELECT id, password_hash FROM users') as $seedUser) {
+        if (str_starts_with((string) $seedUser['password_hash'], '$2y$10$e0NRzC0m0Qm2m0iQ1kQ0t')) {
+            updateRow('users', ['password_hash' => $hash], 'id = ?', [(int) $seedUser['id']]);
+            $rehashed++;
+        }
+    }
 }
 ?><!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -59,7 +67,7 @@ if ($connected && $missing === [] && ($_GET['rehash'] ?? '') === '1') {
   </div>
 
   <?php if ($rehashed): ?>
-    <div class="alert success">Passwords reset for <?= (int) $rehashed ?> demo users. Everyone can now sign in with <b>Drive24@2026</b>.</div>
+    <div class="alert success">Passwords reset for <?= (int) $rehashed ?> demo user(s). They can now sign in with <b>Drive24@2026</b>.</div>
   <?php endif; ?>
 
   <?php if ($ok): ?>

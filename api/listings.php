@@ -12,13 +12,21 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET' && isset($_GET['id'])) {
     $car = dbReady() ? findListing((int) $_GET['id']) : null;
     if (!$car) { apiJson(['ok' => false, 'message' => 'Listing not found.'], 404); }
+    // Same visibility as car.php: only approved listings are public; drafts,
+    // pending, rejected or sold cars are visible to the owner/admin only.
+    $viewer = apiUser();
+    $privileged = $viewer !== null && ((int) $car['seller_id'] === (int) $viewer['id'] || $viewer['role'] === 'admin');
+    if ($car['status'] !== 'approved' && !$privileged) {
+        apiJson(['ok' => false, 'message' => 'Listing not found.'], 404);
+    }
     $insp = fetchOne('SELECT * FROM inspections WHERE vehicle_id = ? ORDER BY id DESC', [(int) $car['vehicle_id']]);
     $hist = fetchOne('SELECT * FROM vehicle_history WHERE vehicle_id = ?', [(int) $car['vehicle_id']]);
     apiJson(['ok' => true, 'listing' => [
         'listing_id' => (int) $car['id'], 'title' => vehicleTitle($car), 'make' => $car['make'],
         'model' => $car['model'], 'year' => (int) $car['year'], 'mileage' => (int) $car['km_driven'],
         'price' => (float) $car['price'], 'status' => $car['status'], 'fuel' => $car['fuel_type'],
-        'transmission' => $car['transmission'], 'city' => $car['city'], 'vin' => $car['vin'],
+        'transmission' => $car['transmission'], 'city' => $car['city'],
+        'vin' => $privileged ? $car['vin'] : substr((string) $car['vin'], 0, 3) . '••••••••••••••',
         'inspection_score' => (int) $car['inspection_score'], 'rating' => listingRating((int) $car['id']),
         'inspection' => $insp ? ['score' => (int) $insp['score'], 'status' => $insp['status']] : null,
         'history' => $hist ? ['accidents' => (int) $hist['accidents'], 'challans' => (int) $hist['challans']] : null,
@@ -31,6 +39,7 @@ if ($method === 'POST') {
         apiJson(['ok' => false, 'message' => 'Seller sign-in required.'], 401);
     }
     $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    verifyApiCsrf(is_array($in) ? $in : null);
     foreach (['make', 'model', 'year', 'price'] as $req) {
         if (empty($in[$req])) { apiJson(['ok' => false, 'message' => "Field '$req' is required."], 422); }
     }
@@ -60,6 +69,7 @@ if ($method === 'PUT') {
         apiJson(['ok' => false, 'message' => 'Listing not found.'], 404);
     }
     $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    verifyApiCsrf(is_array($in) ? $in : null);
     $data = [];
     if (isset($in['price']) && (float) $in['price'] > 0) { $data['price'] = (float) $in['price']; }
     if ($data === []) { apiJson(['ok' => false, 'message' => 'Nothing to update.'], 422); }

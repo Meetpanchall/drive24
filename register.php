@@ -15,6 +15,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if (!dbReady()) {
         $error = 'MySQL is not connected yet. Import database/schema.sql first.';
+    } elseif ($name === '') {
+        $error = 'Please enter your full name.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid e-mail address.';
     } elseif (strlen($password) < 8) {
         $error = 'Password must be at least 8 characters.';
     } elseif (fetchOne('SELECT id FROM users WHERE email = ?', [$email])) {

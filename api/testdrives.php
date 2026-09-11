@@ -14,8 +14,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 }
 
 $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+verifyApiCsrf(is_array($in) ? $in : null);
 $car = findListing((int) ($in['listing_id'] ?? 0));
 if (!$car) { apiJson(['ok' => false, 'message' => 'Valid listing_id required.'], 422); }
+if ($car['status'] !== 'approved') { apiJson(['ok' => false, 'message' => 'Test drives are open only on live listings.'], 422); }
 $date = (string) ($in['slot_date'] ?? substr((string) ($in['datetime'] ?? ''), 0, 10) ?: date('Y-m-d', strtotime('+2 days')));
 $id = insert('test_drives', ['listing_id' => (int) $car['id'], 'user_id' => $u['id'],
     'mode' => ($in['mode'] ?? 'home') === 'hub' ? 'hub' : 'home', 'slot_date' => $date,

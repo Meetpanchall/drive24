@@ -29,6 +29,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 }
 
 $payload = json_decode((string) file_get_contents('php://input'), true) ?: [];
+verifyApiCsrf($payload);
 $thread = $threadOf((int) ($payload['thread_id'] ?? 0));
 $body = trim((string) ($payload['body'] ?? ''));
 if (!$thread || $body === '') { apiJson(['ok' => false, 'message' => 'Thread and message body are required.'], 422); }

@@ -11,6 +11,7 @@ if ($u === null) {
     echo json_encode(['ok' => false, 'message' => 'Please sign in to save cars.']);
     exit;
 }
+verifyApiCsrf($payload);
 if ($listingId <= 0) {
     echo json_encode(['ok' => false, 'message' => 'Invalid car.']);
     exit;

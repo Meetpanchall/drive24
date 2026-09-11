@@ -11,7 +11,9 @@ return [
         'pass'    => getenv('DB_PASS') !== false ? getenv('DB_PASS') : '',
         'charset' => 'utf8mb4',
     ],
-    'app' => ['name' => 'DRIVE24', 'debug' => getenv('APP_DEBUG') === '1'],
+    // APP_SECRET signs API bearer tokens - set a long random value in production.
+    'app' => ['name' => 'DRIVE24', 'debug' => getenv('APP_DEBUG') === '1',
+        'secret' => getenv('APP_SECRET') ?: 'drive24-dev-secret-change-in-production'],
     // Razorpay payment gateway - TEST keys below work out of the box.
     // Override with RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET (or RAZORPAY_SECRET) env vars,
     // or paste LIVE keys here when going production.

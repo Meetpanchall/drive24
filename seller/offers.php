@@ -5,11 +5,20 @@ $u = requireLogin('seller');
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
     $offerId = (int) ($_POST['offer_id'] ?? 0);
-    $offer = fetchOne('SELECT o.*, l.seller_id FROM offers o JOIN listings l ON l.id = o.listing_id WHERE o.id = ?', [$offerId]);
+    $offer = fetchOne('SELECT o.*, l.seller_id, l.status AS listing_status, l.hold_buyer_id FROM offers o JOIN listings l ON l.id = o.listing_id WHERE o.id = ?', [$offerId]);
     if ($offer && ((int) $offer['seller_id'] === (int) $u['id'] || $u['role'] === 'admin')) {
         $action = $_POST['action'] ?? '';
         $buyerId = (int) $offer['buyer_id'];
         $listingId = (int) $offer['listing_id'];
+        // Stale offers (already accepted/rejected) and sold cars cannot be
+        // acted on again - prevents double-holds and price overwrites.
+        $open = in_array((string) $offer['status'], ['new', 'countered'], true);
+        $sellable = ((string) $offer['listing_status'] === 'approved')
+            || ((string) $offer['listing_status'] === 'reserved' && (int) ($offer['hold_buyer_id'] ?? 0) === $buyerId);
+        if (in_array($action, ['accept', 'counter'], true) && (!$open || !$sellable)) {
+            flash('error', 'This offer can no longer be acted on (already decided or car sold).');
+            redirect(base('seller/offers.php'));
+        }
         if ($action === 'accept') {
             updateRow('offers', ['status' => 'accepted'], 'id = ?', [$offerId]);
             updateRow('listings', ['price' => (float) $offer['amount'], 'hold_buyer_id' => $buyerId,

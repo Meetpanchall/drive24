@@ -61,8 +61,28 @@ function verifyCsrf(): void
     $sent = $_POST['_token'] ?? '';
     if (!is_string($sent) || !hash_equals(csrfToken(), $sent)) {
         flash('error', 'Your session expired, please try again.');
-        redirect($_SERVER['HTTP_REFERER'] ?? base('index.php'));
+        redirect(safeNext($_SERVER['HTTP_REFERER'] ?? '', base('index.php')));
     }
+}
+
+/**
+ * Allow only same-site relative redirect targets. Absolute URLs, protocol-
+ * relative URLs and backslash tricks fall back to $fallback (open-redirect
+ * guard for ?next=, Referer and stored link redirects).
+ */
+function safeNext(string $url, string $fallback): string
+{
+    $url = trim($url);
+    if ($url === '' || str_contains($url, "\r") || str_contains($url, "\n") || str_contains($url, "\\")) {
+        return $fallback;
+    }
+    // Reject absolute + protocol-relative URLs (case-insensitive scheme check).
+    if ((bool) preg_match('#^\s*(?:[a-z][a-z0-9+.-]*:|//)#i', $url)) { return $fallback; }
+    // Plain relative path or root-relative path only.
+    if (!str_starts_with($url, '/') && !preg_match('#^[A-Za-z0-9][A-Za-z0-9._~:/?#\[\]@!$&\'()*+,;=%-]*$#', $url)) {
+        return $fallback;
+    }
+    return $url;
 }
 
 function flash(?string $type = null, ?string $message = null): array
@@ -372,12 +392,25 @@ function saveDocument(array $file, string $prefix = 'doc'): ?string
     return move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $name) ? $name : null;
 }
 
+/** Stable server secret for API token HMACs (survives session rotation). */
+function apiSecret(): string
+{
+    $cfg = config();
+    $secret = (string) (getenv('APP_SECRET') ?: ($cfg['app']['secret'] ?? ''));
+    if ($secret === '') {
+        // Last-resort fallback: derived from the configured DB credentials so
+        // it is stable per deployment without hard-coding a secret here.
+        $secret = hash('sha256', 'drive24|' . ($cfg['db']['host'] ?? '') . '|' . ($cfg['db']['name'] ?? '') . '|' . ($cfg['db']['user'] ?? ''));
+    }
+    return $secret;
+}
+
 /** Signed API token (HMAC) for JSON clients; sessions remain the primary auth. */
 function apiToken(int $userId): string
 {
     $exp = time() + 7 * 86400;
     $body = $userId . '.' . $exp;
-    return $body . '.' . hash_hmac('sha256', $body, csrfToken());
+    return $body . '.' . hash_hmac('sha256', $body, apiSecret());
 }
 
 /** Authenticate a JSON request via session cookie or `Authorization: Bearer` token. */
@@ -391,8 +424,30 @@ function apiUser(): ?array
     if (count($parts) !== 3) { return null; }
     [$id, $exp, $sig] = $parts;
     if ((int) $exp < time()) { return null; }
-    if (!hash_equals(hash_hmac('sha256', $id . '.' . $exp, csrfToken()), $sig)) { return null; }
+    if (!hash_equals(hash_hmac('sha256', $id . '.' . $exp, apiSecret()), $sig)) { return null; }
     return fetchOne('SELECT id, name, email, mobile, role, city, kyc_status FROM users WHERE id = ? AND status = "active"', [(int) $id]);
+}
+
+/**
+ * CSRF guard for session-authenticated JSON API calls. Browsers can be
+ * tricked into POSTing JSON cross-site (e.g. via text/plain forms), so any
+ * state-changing API reached through the session cookie must also present
+ * the CSRF token (header X-CSRF-Token, already sent by postJson(), or a
+ * _token field in the JSON body). Bearer-token callers are exempt because
+ * the token itself is not ambient authority.
+ */
+function verifyApiCsrf(?array $body = null): void
+{
+    if (user() === null) { return; } // Bearer or guest: no ambient session to forge.
+    $hdr = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (is_string($hdr) && str_starts_with($hdr, 'Bearer ')) { return; }
+    $sent = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if ((!is_string($sent) || $sent === '') && is_array($body)) {
+        $sent = $body['_token'] ?? '';
+    }
+    if (!is_string($sent) || $sent === '' || !hash_equals(csrfToken(), $sent)) {
+        apiJson(['ok' => false, 'error' => 'Invalid CSRF token.'], 403);
+    }
 }
 
 function apiJson(mixed $data, int $code = 200): void

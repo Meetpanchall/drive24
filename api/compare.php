@@ -5,6 +5,7 @@ header('Content-Type: application/json');
 
 $payload = json_decode((string) file_get_contents('php://input'), true) ?: [];
 $listingId = (int) ($payload['listing_id'] ?? 0);
+verifyApiCsrf($payload);
 $list = compareIds();
 
 if ($listingId <= 0) {

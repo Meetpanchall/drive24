@@ -21,8 +21,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $demoCode = $code;
         flash('success', 'OTP sent to ' . $mobile . ' (valid 10 minutes).');
     } elseif ($action === 'verify') {
-        $row = fetchOne('SELECT * FROM otp_codes WHERE mobile = ? AND verified = 0 AND expires_at > NOW()
-            ORDER BY id DESC', [$mobile]);
+        $row = fetchOne('SELECT * FROM otp_codes WHERE user_id = ? AND mobile = ? AND verified = 0 AND expires_at > NOW()
+            ORDER BY id DESC', [$u['id'], $mobile]);
         if (!$row) {
             $error = 'No active OTP for this number. Please resend.';
         } elseif ((int) $row['attempts'] >= 5) {

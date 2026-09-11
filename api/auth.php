@@ -22,6 +22,7 @@ if ($action === 'signup') {
     $id = insert('users', ['name' => trim((string) $in['name']), 'email' => $email,
         'mobile' => trim((string) ($in['mobile'] ?? '')) ?: null, 'role' => $role,
         'password_hash' => password_hash($pw, PASSWORD_DEFAULT)]);
+    session_regenerate_id(true);
     $_SESSION['user_id'] = $id;
     apiJson(['ok' => true, 'user_id' => $id, 'token' => apiToken($id), 'message' => 'Signup successful.'], 201);
 }

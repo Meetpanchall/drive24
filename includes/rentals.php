@@ -139,13 +139,6 @@ function rentalChargesTotal(int $rentalId): float
     return (float) fetchValue('SELECT COALESCE(SUM(amount),0) FROM rental_charges WHERE rental_id = ?', [$rentalId], 0);
 }
 
-/** Average seller rating (for the rating sort + cards). */
-function sellerRating(int $sellerId): array
-{
-    if (!dbReady()) { return ['avg' => 0.0, 'count' => 0]; }
-    $row = fetchOne("SELECT COUNT(*) c, COALESCE(AVG(rating),0) a FROM reviews WHERE target_user_id = ? AND status = 'approved'", [$sellerId]);
-    return ['avg' => round((float) ($row['a'] ?? 0), 1), 'count' => (int) ($row['c'] ?? 0)];
-}
 
 /** Filtered rental inventory search. $f supports q/make/body/fuel/transmission/city/max_ppd/seats/sort + pickup_at/return_at. */
 function searchRentals(array $f, int $limit = 9, int $offset = 0): array

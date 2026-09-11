@@ -19,9 +19,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 }
 
 $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+verifyApiCsrf(is_array($in) ? $in : null);
 $car = findListing((int) ($in['listing_id'] ?? 0));
 $price = (float) ($in['offer_price'] ?? $in['amount'] ?? 0);
 if (!$car || $price <= 0) { apiJson(['ok' => false, 'message' => 'Valid listing_id and offer_price required.'], 422); }
+if ($car['status'] !== 'approved') { apiJson(['ok' => false, 'message' => 'Offers are open only on live listings.'], 422); }
 if ((int) $car['seller_id'] === (int) $u['id']) { apiJson(['ok' => false, 'message' => 'You cannot offer on your own car.'], 422); }
 $oid = insert('offers', ['listing_id' => (int) $car['id'], 'buyer_id' => $u['id'], 'amount' => $price,
     'message' => mb_substr(trim((string) ($in['message'] ?? '')), 0, 400), 'status' => 'new']);

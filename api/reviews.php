@@ -17,6 +17,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 $u = apiUser();
 if ($u === null) { apiJson(['ok' => false, 'message' => 'Sign in required.'], 401); }
 $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+verifyApiCsrf(is_array($in) ? $in : null);
 $car = findListing((int) ($in['listing_id'] ?? 0));
 $rating = (int) ($in['rating'] ?? 0);
 if (!$car || $rating < 1 || $rating > 5) { apiJson(['ok' => false, 'message' => 'Valid listing_id and rating 1-5 required.'], 422); }

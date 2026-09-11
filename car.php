@@ -9,7 +9,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $u = requireLogin();
     $action = (string) ($_POST['action'] ?? '');
     $live0 = findListing($id);
-    if ($live0 && in_array($live0['status'], ['draft', 'pending', 'rejected'], true)
+    if ($live0 === null) {
+        flash('error', 'This car is no longer available.');
+        redirect(base('cars.php'));
+    }
+    if (in_array($live0['status'], ['draft', 'pending', 'rejected'], true)
         && (int) $live0['seller_id'] !== (int) $u['id'] && !in_array($u['role'] ?? '', ['admin', 'support'], true)) {
         flash('error', 'This listing is not live yet.');
         redirect(base('cars.php'));

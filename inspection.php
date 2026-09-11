@@ -8,6 +8,11 @@ $car = findListing((int) ($_GET['listing'] ?? $_POST['listing_id'] ?? 0));
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
+    $bookCar = findListing((int) ($_POST['listing_id'] ?? 0));
+    if ($bookCar === null) {
+        flash('error', 'Choose a valid car to inspect.');
+        redirect(base('cars.php'));
+    }
     $id = insert('inspection_bookings', [
         'listing_id' => (int) ($_POST['listing_id'] ?? 0), 'user_id' => $u['id'],
         'mode' => ($_POST['mode'] ?? 'home') === 'hub' ? 'hub' : 'home',

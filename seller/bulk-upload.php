@@ -12,6 +12,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         flash('error', 'Please choose a CSV file to upload.');
         redirect(base('seller/bulk-upload.php'));
     }
+    if ((int) ($file['size'] ?? 0) > 2 * 1024 * 1024
+        || !in_array(strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION)), ['csv', 'txt'], true)) {
+        flash('error', 'Upload a .csv file under 2 MB.');
+        redirect(base('seller/bulk-upload.php'));
+    }
     $rows = array_map('str_getcsv', file((string) $file['tmp_name'], FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
     $header = array_map(static fn($h) => strtolower(trim((string) $h)), $rows[0] ?? []);
     $need = ['make', 'model', 'year', 'price'];

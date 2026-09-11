@@ -24,11 +24,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                         ['expires' => time() + 30 * 86400, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
                 }
                 logActivity((int) $row['id'], 'auth.login', $email);
+                $home = $row['role'] === 'admin' ? 'admin/index.php'
+                    : (in_array($row['role'], ['seller', 'dealer'], true) ? 'seller/dashboard.php' : 'account.php');
                 $next = (string) ($_POST['next'] ?? '');
-                if ($next !== '') { redirect($next); }
-                if ($row['role'] === 'admin') { redirect(base('admin/index.php')); }
-                if (in_array($row['role'], ['seller', 'dealer'], true)) { redirect(base('seller/dashboard.php')); }
-                redirect(base('account.php'));
+                if ($next !== '') { redirect(safeNext($next, base($home))); }
+                redirect(base($home));
             }
         } else {
             // Help users who imported the schema but skipped the install.php password step.

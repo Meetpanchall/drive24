@@ -8,7 +8,8 @@ $order = fetchOne('SELECT o.*, v.make, v.model, v.variant, v.year, v.reg_number,
     s.name AS seller_name, s.company AS seller_company, s.city AS seller_city
     FROM orders o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id
     JOIN users s ON s.id = l.seller_id
-    WHERE o.id = ? AND (o.buyer_id = ?)', [$id, $u['id']]);
+    WHERE o.id = ? AND (o.buyer_id = ? OR l.seller_id = ?' . ($u['role'] === 'admin' ? ' OR 1 = 1' : '') . ')',
+    [$id, $u['id'], $u['id']]);
 if (!$order) { flash('error', 'Order not found.'); redirect(base('orders.php')); }
 $payments = fetchAll('SELECT * FROM payments WHERE order_id = ? ORDER BY id', [$id]);
 $docFee = 4999;

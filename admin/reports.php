@@ -3,8 +3,12 @@ require_once __DIR__ . '/../includes/listings.php';
 require_once __DIR__ . '/../includes/admin_layout.php';
 $admin = requireLogin('admin');
 
-$from = (string) ($_GET['from'] ?? date('Y-m-d', strtotime('-180 days')));
-$to = (string) ($_GET['to'] ?? date('Y-m-d'));
+// Strict date shape - these values also land in the CSV download filename,
+// so anything unexpected falls back to the defaults (header-safety).
+$dateShape = static fn(string $v, string $fb): string =>
+    (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : $fb;
+$from = $dateShape((string) ($_GET['from'] ?? ''), date('Y-m-d', strtotime('-180 days')));
+$to = $dateShape((string) ($_GET['to'] ?? ''), date('Y-m-d'));
 
 if (($_GET['export'] ?? '') === 'sales' && dbReady()) {
     header('Content-Type: text/csv');
