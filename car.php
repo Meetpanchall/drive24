@@ -8,6 +8,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
     $u = requireLogin();
     $action = (string) ($_POST['action'] ?? '');
+    $live0 = findListing($id);
+    if ($live0 && in_array($live0['status'], ['draft', 'pending', 'rejected'], true)
+        && (int) $live0['seller_id'] !== (int) $u['id'] && !in_array($u['role'] ?? '', ['admin', 'support'], true)) {
+        flash('error', 'This listing is not live yet.');
+        redirect(base('cars.php'));
+    }
     if ($action === 'offer') {
         insert('offers', [
             'listing_id' => $id, 'buyer_id' => $u['id'],
@@ -96,7 +102,18 @@ if ($car === null) {
     renderFooter();
     exit;
 }
-q('UPDATE listings SET views = views + 1 WHERE id = ?', [$id]);
+// Listings that are not live are visible only to the owner and admins (preview).
+$viewer = user();
+$isOwner = $viewer && (int) $viewer['id'] === (int) $car['seller_id'];
+$isStaff = $viewer && in_array($viewer['role'] ?? '', ['admin', 'support'], true);
+$preview = in_array($car['status'], ['draft', 'pending', 'rejected'], true);
+if ($preview && !$isOwner && !$isStaff) {
+    renderHeader('Not available yet', 'cars');
+    echo '<div class="wrap section"><div class="card card-pad empty">This listing is not live yet. <a href="' . e(base('cars.php')) . '">Browse live cars</a>.</div></div>';
+    renderFooter();
+    exit;
+}
+if (!$preview) { q('UPDATE listings SET views = views + 1 WHERE id = ?', [$id]); }
 $inspection = fetchOne('SELECT * FROM inspections WHERE vehicle_id = ? ORDER BY id DESC', [(int) $car['vehicle_id']]);
 $history = fetchOne('SELECT * FROM vehicle_history WHERE vehicle_id = ?', [(int) $car['vehicle_id']]);
 $similar = fetchAll(LISTING_SELECT . " WHERE l.status = 'approved' AND l.id <> ? AND (v.body_type = ? OR v.make = ?) ORDER BY ABS(l.price - ?) LIMIT 3", [$id, $car['body_type'], $car['make'], (float) $car['price']]);
@@ -140,15 +157,42 @@ $onRoad = (float) $car['price'] + $docFee + $tcs;
 renderHeader(vehicleTitle($car), 'cars');
 ?>
 <div class="wrap section">
+  <?php if ($preview): ?>
+    <div class="alert warn" style="margin-bottom:14px">Preview - this listing is <b><?= e((string) $car['status']) ?></b> and hidden from buyers.
+      <?php if ($isOwner): ?> <a href="<?= e(base('seller/edit-listing.php?id=' . $id)) ?>">Edit listing</a><?php endif; ?></div>
+  <?php endif; ?>
   <p class="muted" style="font-size:13px"><a href="<?= e(base('index.php')) ?>">Home</a> / <a href="<?= e(base('cars.php')) ?>">Used cars</a> / <?= e(vehicleTitle($car)) ?></p>
   <div class="split-3">
     <div>
       <?php if (!empty($car['model_3d'])): ?>
       <div class="card model3d-card" style="overflow:hidden;margin-bottom:18px">
         <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
-        <model-viewer src="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" alt="3D model of <?= e(vehicleTitle($car)) ?>" auto-rotate camera-controls shadow-intensity="1" style="width:100%;height:380px;background:#0a1630"></model-viewer>
+        <?php $hasIn = !empty($car['model_3d_interior']); ?>
+        <?php if ($hasIn): ?>
+        <div style="display:flex;gap:8px;padding:12px 14px 0">
+          <button type="button" class="btn btn-dark btn-sm m3d-tab on" data-m3d="ext">Exterior</button>
+          <button type="button" class="btn btn-outline btn-sm m3d-tab" data-m3d="int">Interior</button>
+        </div>
+        <?php endif; ?>
+        <model-viewer id="m3dView" src="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" data-ext="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" data-int="<?= $hasIn ? e(base('assets/uploads/' . $car['model_3d_interior'])) : '' ?>" alt="3D model of <?= e(vehicleTitle($car)) ?>" auto-rotate camera-controls shadow-intensity="1" style="width:100%;height:380px;background:#0a1630"></model-viewer>
         <div class="card-pad" style="padding-top:10px"><span class="badge info">Interactive 3D</span> <small class="muted">Drag to spin &middot; scroll to zoom &middot; right-drag to pan</small></div>
       </div>
+      <?php if ($hasIn): ?>
+      <script>
+      (function () {
+        var v = document.getElementById('m3dView');
+        document.querySelectorAll('.m3d-tab').forEach(function (b) {
+          b.addEventListener('click', function () {
+            document.querySelectorAll('.m3d-tab').forEach(function (x) { x.classList.remove('on', 'btn-dark'); x.classList.add('btn-outline'); });
+            b.classList.add('on', 'btn-dark'); b.classList.remove('btn-outline');
+            var k = b.getAttribute('data-m3d');
+            v.src = k === 'int' ? v.getAttribute('data-int') : v.getAttribute('data-ext');
+            v.setAttribute('camera-orbit', k === 'int' ? '0deg 75deg 2.2m' : '0deg 75deg 4m');
+          });
+        });
+      })();
+      </script>
+      <?php endif; ?>
       <?php endif; ?>
       <div class="card" style="overflow:hidden">
         <div class="gallery">
@@ -412,7 +456,7 @@ renderHeader(vehicleTitle($car), 'cars');
           <a class="btn btn-ghost btn-sm" style="flex:1" href="<?= e(base('loan-apply.php?listing=' . $id)) ?>">Apply loan</a>
           <a class="btn btn-ghost btn-sm" style="flex:1" href="<?= e(base('insurance.php?listing=' . $id)) ?>">Insurance</a>
         </div>
-        <div class="kv" style="margin-top:12px"><span>Seller</span><span><?= e((string) ($car['seller_company'] ?: $car['seller_name'])) ?></span></div>
+        <div class="kv" style="margin-top:12px"><span>Seller</span><span><a href="<?= e(base('seller.php?id=' . $sellerId)) ?>"><?= e((string) ($car['seller_company'] ?: $car['seller_name'])) ?></a></span></div>
         <div class="kv"><span>Seller rating</span><span class="num"><?= $sellerRate['count'] ? '★ ' . $sellerRate['avg'] . ' (' . $sellerRate['count'] . ')' : 'New seller' ?></span></div>
         <div class="kv"><span>Inspection score</span><span class="num"><?= (int) $car['inspection_score'] ?>/100</span></div>
         <div class="kv"><span>Certified</span><span><?= ((int) $car['certified'] === 1) ? statusBadge('verified') : statusBadge('pending') ?></span></div>
@@ -420,7 +464,7 @@ renderHeader(vehicleTitle($car), 'cars');
         <div class="kv"><span>KYC</span><span><?= statusBadge((string) ($car['seller_kyc'] ?? 'pending')) ?></span></div>
         <div class="kv"><span>Cars sold</span><span class="num"><?= $sellerSold ?></span></div>
         <div class="kv"><span>Responds to</span><span class="num"><?= $sellerResp ?>% of offers</span></div>
-        <div style="margin-top:10px"><a class="btn btn-ghost btn-sm" href="<?= e(base('cars.php?seller=' . $sellerId)) ?>">All cars by this seller</a></div>
+        <div style="margin-top:10px"><a class="btn btn-ghost btn-sm" href="<?= e(base('seller.php?id=' . $sellerId)) ?>">Seller profile &amp; all cars</a></div>
         <details style="margin-top:10px">
           <summary class="muted" style="cursor:pointer;font-size:13px">Report this listing</summary>
           <form method="post" style="margin-top:8px">

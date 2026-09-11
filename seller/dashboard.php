@@ -12,6 +12,8 @@ $kpi = [
 $recent = fetchAll('SELECT l.id, l.price, l.status, l.views, v.make, v.model, v.year FROM listings l JOIN vehicles v ON v.id = l.vehicle_id WHERE l.seller_id = ? ORDER BY l.created_at DESC LIMIT 6', [$u['id']]);
 $offers = fetchAll('SELECT o.*, v.make, v.model, u.name AS buyer FROM offers o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id JOIN users u ON u.id = o.buyer_id WHERE l.seller_id = ? ORDER BY o.created_at DESC LIMIT 6', [$u['id']]);
 $monthly = fetchAll("SELECT DATE_FORMAT(created_at,'%b') AS m, COUNT(*) AS c FROM listings WHERE seller_id = ? GROUP BY DATE_FORMAT(created_at,'%Y-%m'), m ORDER BY MIN(created_at) LIMIT 6", [$u['id']]);
+$reviews = fetchAll("SELECT r.*, u.name AS author, v.make, v.model, v.year FROM reviews r JOIN users u ON u.id = r.author_id JOIN listings l ON l.id = r.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE r.target_user_id = ? ORDER BY r.id DESC LIMIT 6", [$u['id']]);
+$rateAvg = $reviews ? round(array_sum(array_column($reviews, 'rating')) / count($reviews), 1) : 0.0;
 
 adminHeader('Seller dashboard', 'dashboard', 'seller');
 ?>
@@ -43,6 +45,15 @@ adminHeader('Seller dashboard', 'dashboard', 'seller');
         <span class="num"><?= rupees($o['amount']) ?> <?= statusBadge((string) $o['status']) ?></span></div>
     <?php endforeach; ?>
     <a class="btn btn-primary btn-block btn-sm" style="margin-top:12px" href="<?= e(base('seller/offers.php')) ?>">Manage offers</a>
+  </div>
+  <div class="card card-pad">
+    <h2 style="font-size:1.1rem">Buyer reviews <?= $rateAvg ? '<span class="num">★ ' . $rateAvg . '</span>' : '' ?></h2>
+    <?php if (!$reviews): ?><p class="muted">No reviews yet - they appear after moderation.</p><?php endif; ?>
+    <?php foreach ($reviews as $r): ?>
+      <div class="kv"><span><b>★ <?= (int) $r['rating'] ?></b> <?= e((string) $r['author']) ?> &middot; <?= e($r['year'] . ' ' . $r['make'] . ' ' . $r['model']) ?>
+        <?php if (!empty($r['comment'])): ?><br><small class="muted"><?= e(mb_substr((string) $r['comment'], 0, 90)) ?></small><?php endif; ?></span>
+        <span><?= statusBadge((string) $r['status']) ?></span></div>
+    <?php endforeach; ?>
   </div>
 </div>
 <?php adminFooter(); ?>

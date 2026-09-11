@@ -99,7 +99,7 @@ function renderFooter(): void
         <a href="<?= e(base('services.php')) ?>">Services <span class="chev">&rsaquo;</span></a>
         <a href="<?= e(base('insurance.php')) ?>">Insurance <span class="chev">&rsaquo;</span></a>
         <a href="<?= e(base('about.php#careers')) ?>">Careers <span class="chev">&rsaquo;</span></a>
-        <a href="<?= e(base('support.php')) ?>">Contact Us <span class="chev">&rsaquo;</span></a></div>
+        <a href="<?= e(base('contact.php')) ?>">Contact Us <span class="chev">&rsaquo;</span></a></div>
     </div>
     <div class="foot-bottom">
       <span>&copy; <?= date('Y') ?> DRIVE24 Technologies Pvt. Ltd. All rights reserved.</span>

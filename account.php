@@ -20,7 +20,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     } elseif ($action === 'search_delete') {
         q('DELETE FROM saved_searches WHERE id = ? AND user_id = ?', [(int) ($_POST['id'] ?? 0), $u['id']]);
         flash('success', 'Saved search deleted.');
-    }
+    } elseif ($action === 'password') {
+        $cur = (string) ($_POST['current'] ?? '');
+        $new = (string) ($_POST['new'] ?? '');
+        $row = fetchOne('SELECT password_hash FROM users WHERE id = ?', [$u['id']]);
+        if (!$row || !password_verify($cur, (string) $row['password_hash'])) {
+            flash('error', 'Current password is incorrect.');
+        } elseif (strlen($new) < 8) {
+            flash('error', 'New password must be at least 8 characters.');
+        } else {
+            updateRow('users', ['password_hash' => password_hash($new, PASSWORD_DEFAULT)], 'id = ?', [$u['id']]);
+            logActivity((int) $u['id'], 'account.password', 'password changed');
+            flash('success', 'Password changed. Use it at your next sign-in.');
+        }
     } elseif ($action === 'accept_counter') {
         $offer = fetchOne('SELECT o.*, l.seller_id FROM offers o JOIN listings l ON l.id = o.listing_id WHERE o.id = ? AND o.buyer_id = ?', [(int) ($_POST['offer_id'] ?? 0), $u['id']]);
         if ($offer && ($offer['status'] ?? '') === 'countered' && (float) ($offer['counter_amount'] ?? 0) > 0) {
@@ -32,12 +44,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             redirect(base('checkout.php?listing=' . (int) $offer['listing_id']));
         }
         flash('error', 'This counter is no longer available.');
+    }
     redirect(base('account.php'));
 }
 
 $orders = fetchAll('SELECT o.*, v.make, v.model, v.year FROM orders o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE o.buyer_id = ? ORDER BY o.created_at DESC', [$u['id']]);
 $drives = fetchAll('SELECT t.*, v.make, v.model FROM test_drives t JOIN listings l ON l.id = t.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE t.user_id = ? ORDER BY t.slot_date DESC', [$u['id']]);
 $myOffers = fetchAll('SELECT o.*, v.make, v.model FROM offers o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE o.buyer_id = ? ORDER BY o.created_at DESC', [$u['id']]);
+$myQuestions = fetchAll('SELECT q.*, v.make, v.model, v.year, l.status AS live FROM questions q JOIN listings l ON l.id = q.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE q.user_id = ? ORDER BY q.id DESC', [$u['id']]);
+$myReviews = fetchAll('SELECT r.*, v.make, v.model, v.year FROM reviews r JOIN listings l ON l.id = r.listing_id JOIN vehicles v ON v.id = l.vehicle_id WHERE r.author_id = ? ORDER BY r.id DESC', [$u['id']]);
 $searches = fetchAll('SELECT * FROM saved_searches WHERE user_id = ? ORDER BY created_at DESC', [$u['id']]);
 $loans = [];
 $quotes = [];
@@ -126,6 +141,32 @@ renderHeader('My account', '');
         <?php endforeach; ?>
         </tbody></table></div>
 
+      <h2 style="font-size:1.2rem;margin-top:24px">My questions</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Car</th><th>Question</th><th>Seller answer</th><th></th></tr></thead>
+        <tbody>
+        <?php if (!$myQuestions): ?><tr><td colspan="4" class="empty">No questions asked yet.</td></tr><?php endif; ?>
+        <?php foreach ($myQuestions as $q): ?>
+          <tr><td><?= e($q['year'] . ' ' . $q['make'] . ' ' . $q['model']) ?></td>
+            <td><?= e((string) $q['question']) ?><div class="muted num" style="font-size:12px"><?= e(date('d M Y', strtotime((string) $q['created_at']))) ?></div></td>
+            <td><?= !empty($q['answer']) ? e((string) $q['answer']) : statusBadge('pending') ?></td>
+            <td><a class="btn btn-ghost btn-sm" href="<?= e(base('car.php?id=' . (int) $q['listing_id'])) ?>">View car</a></td></tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+
+      <h2 style="font-size:1.2rem;margin-top:24px">My reviews</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Car</th><th>Rating</th><th>Review</th><th>Status</th></tr></thead>
+        <tbody>
+        <?php if (!$myReviews): ?><tr><td colspan="4" class="empty">No reviews yet - rate your cars from the order page.</td></tr><?php endif; ?>
+        <?php foreach ($myReviews as $r): ?>
+          <tr><td><a href="<?= e(base('car.php?id=' . (int) $r['listing_id'])) ?>"><?= e($r['year'] . ' ' . $r['make'] . ' ' . $r['model']) ?></a></td>
+            <td class="num"><b>★ <?= (int) $r['rating'] ?>/5</b></td>
+            <td><?= e(trim((string) (($r['title'] ?? '') . ' ' . ($r['comment'] ?? '')))) ?: '<span class="muted">-</span>' ?></td>
+            <td><?= statusBadge((string) $r['status']) ?></td></tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+
       <?php if ($myBids): ?>
       <h2 style="font-size:1.2rem;margin-top:24px">My auction bids</h2>
       <div class="table-wrap"><table class="data">
@@ -198,6 +239,15 @@ renderHeader('My account', '');
         <div style="margin-bottom:14px"><label class="form-label">City</label><input class="form-control" name="city" value="<?= e((string) $u['city']) ?>"></div>
         <button class="btn btn-primary btn-block" type="submit">Save profile</button>
       </form>
+      <details style="margin-top:12px">
+        <summary class="muted" style="cursor:pointer;font-size:13.5px">Change password</summary>
+        <form method="post" style="margin-top:8px">
+          <?= csrfField() ?><input type="hidden" name="action" value="password">
+          <div style="margin-bottom:8px"><input class="form-control" type="password" name="current" placeholder="Current password" required autocomplete="current-password"></div>
+          <div style="margin-bottom:8px"><input class="form-control" type="password" name="new" placeholder="New password (8+ chars)" required minlength="8" autocomplete="new-password"></div>
+          <button class="btn btn-outline btn-block btn-sm" type="submit">Update password</button>
+        </form>
+      </details>
       <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
       <a class="btn btn-outline btn-block btn-sm" href="<?= e(base('wishlist.php')) ?>">Wishlist &amp; alerts</a>
       <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('chat.php')) ?>">My messages</a>

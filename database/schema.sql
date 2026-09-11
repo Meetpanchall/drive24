@@ -70,6 +70,7 @@ CREATE TABLE listings (
   extra_km_rate DECIMAL(8,2) NOT NULL DEFAULT 12.00,
   security_deposit DECIMAL(10,2) NOT NULL DEFAULT 10000.00,
   model_3d VARCHAR(160) DEFAULT NULL,
+  model_3d_interior VARCHAR(160) DEFAULT NULL,
   hold_buyer_id INT DEFAULT NULL,
   hold_until DATETIME DEFAULT NULL,
   rejection_note VARCHAR(255) DEFAULT NULL,

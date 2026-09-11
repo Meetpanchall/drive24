@@ -28,6 +28,9 @@ renderHeader('My orders', '');
         </div>
         <div class="num" style="font-weight:700"><?= rupees($o['amount']) ?></div>
         <div><?= statusBadge((string) $o['status']) ?></div>
+        <?php if (($o['status'] ?? '') === 'pending'): ?>
+        <a class="btn btn-primary btn-sm" href="<?= e(base('pay.php?order=' . (int) $o['id'])) ?>">Pay now</a>
+        <?php endif; ?>
         <a class="btn btn-outline btn-sm" href="<?= e(base('order.php?id=' . (int) $o['id'])) ?>">Details</a>
       </div>
     <?php endforeach; ?>

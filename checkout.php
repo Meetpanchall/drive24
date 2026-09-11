@@ -7,6 +7,10 @@ $u = requireLogin();
 $listingId = (int) ($_GET['listing'] ?? $_POST['listing_id'] ?? 0);
 $car = findListing($listingId);
 if ($car === null) { flash('error', 'Select a car to book.'); redirect(base('cars.php')); }
+if (($car['status'] ?? '') !== 'approved') {
+    flash('error', 'This car is not available for booking right now.');
+    redirect(base('cars.php'));
+}
 if (!empty($car['hold_until']) && $car['hold_until'] > date('Y-m-d H:i:s') && (int) ($car['hold_buyer_id'] ?? 0) !== (int) $u['id']) {
     flash('error', 'This car is reserved for another buyer until ' . date('d M, h:i A', strtotime((string) $car['hold_until'])) . '.');
     redirect(base('cars.php'));

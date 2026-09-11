@@ -78,8 +78,12 @@ adminHeader('My listings', 'listings', 'seller');
           <button class="btn btn-outline btn-sm">Save</button>
         </form>
       </td>
-      <td>
-        <form method="post"><?= csrfField() ?>
+      <td style="white-space:nowrap">
+        <a class="btn btn-outline btn-sm" href="<?= e(base('car.php?id=' . (int) $r['id'])) ?>">Preview</a>
+        <?php if (!in_array($r['status'], ['sold', 'reserved'], true)): ?>
+        <a class="btn btn-outline btn-sm" href="<?= e(base('seller/edit-listing.php?id=' . (int) $r['id'])) ?>">Edit</a>
+        <?php endif; ?>
+        <form method="post" style="display:inline"><?= csrfField() ?>
           <input type="hidden" name="listing_id" value="<?= (int) $r['id'] ?>">
           <input type="hidden" name="action" value="<?= $r['status'] === 'draft' ? 'publish' : 'withdraw' ?>">
           <button class="btn btn-<?= $r['status'] === 'draft' ? 'primary' : 'ghost' ?> btn-sm"><?= $r['status'] === 'draft' ? 'Publish' : 'Withdraw' ?></button>

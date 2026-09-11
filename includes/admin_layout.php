@@ -26,6 +26,7 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
             'customers' => ['Customers', 'admin/customers.php'],
             'sellers'   => ['Sellers &amp; dealers', 'admin/sellers.php'],
             'kyc'       => ['KYC &amp; compliance', 'admin/kyc.php'],
+            'documents' => ['Documents registry', 'admin/documents.php'],
             'support'   => ['Support tickets', 'admin/support.php'],
             'complaints' => ['Complaints &amp; disputes', 'admin/complaints.php'],
             'reviews'   => ['Reviews &amp; ratings', 'admin/reviews.php'],
@@ -77,6 +78,7 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
       <?php endforeach; ?>
     <?php endforeach; ?>
     <div class="group">Session</div>
+    <?php if ($area === 'admin'): ?><a class="<?= $active === 'profile' ? 'active' : '' ?>" href="<?= e(base('admin/profile.php')) ?>">My profile</a><?php endif; ?>
     <a href="<?= e(base('logout.php')) ?>">Sign out</a>
   </aside>
   <section class="admin-main">

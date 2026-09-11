@@ -67,8 +67,9 @@ renderHeader('Complete payment', '');
 (function () {
   var btn = document.getElementById('rzpBtn');
   var msg = document.getElementById('payMsg');
+  var failUrl = <?= json_encode(base('payment-failed.php?order=' . $orderId)) ?>;
   function fail(text) {
-    msg.innerHTML = '<div class="alert error" style="text-align:left">' + text + '</div>';
+    msg.innerHTML = '<div class="alert error" style="text-align:left">' + text + '<br><a href="' + failUrl + '">See details &amp; retry options</a></div>';
     btn.disabled = false;
     btn.textContent = 'Retry payment';
   }

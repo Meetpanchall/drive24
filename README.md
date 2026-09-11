@@ -145,3 +145,16 @@ install.php                setup verification + API catalogue
 - `admin/broadcast.php` - notification composer with live audience counts (all / buyers / sellers) plus a recent-send log.
 - `admin/complaints.php` - listing-report queue with the reported car + seller inline and a recorded resolution that is messaged to the reporter on close.
 - Dashboard: rental KPIs (trips on road, overdue returns, rental revenue) and new attention items for complaints and overdue returns.
+
+## 11. Spec-gap closure (edit, profiles, enquiries, failed payments, 3D tabs...)
+
+- `seller/edit-listing.php` - full listing editor (specs, price, photo add/delete, 3D replace); saving a rejected listing resubmits it for approval. Linked from `seller/listings.php` alongside a new Preview button.
+- `car.php` preview mode: draft/pending/rejected listings are visible only to the owner and staff (with a preview banner); strangers see "not live". `checkout.php` and car-page actions refuse non-approved listings.
+- `seller.php` - public seller profile (rating, KYC badge, live cars, buyer reviews), linked from every car page.
+- `account.php` - new My questions tracker (question + seller answer), My reviews list, and change-password form. Also fixed a latent `} elseif` parse error in its POST handler.
+- `seller/dashboard.php` - buyer-review inbox with average rating.
+- `payment-failed.php` - dedicated failure page (order summary, retry, support); linked from `pay.php` failures, and pending orders in `orders.php` get a Pay now button.
+- 3D Exterior/Interior tabs on `car.php` + `rent-car.php` via a new `listings.model_3d_interior` column (upload in `sell.php` and the editor; single-model listings unchanged).
+- `contact.php` - standalone guest-friendly contact page (settings-driven helpline/email) that files support tickets; the footer now points here.
+- `admin/documents.php` - central registry of every uploaded file with type filter and verify/reject (owner notified).
+- `admin/profile.php` - admin name/mobile/city + password change, linked under Session in the sidebar.

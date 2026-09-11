@@ -25,9 +25,32 @@ renderHeader(vehicleTitle($car) . ' on rent', 'rent');
       <?php if (!empty($car['model_3d'])): ?>
       <div class="card model3d-card" style="overflow:hidden;margin-bottom:18px">
         <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
-        <model-viewer src="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" alt="3D model of <?= e(vehicleTitle($car)) ?>" auto-rotate camera-controls shadow-intensity="1" style="width:100%;height:380px;background:#0a1630"></model-viewer>
+        <?php $hasIn = !empty($car['model_3d_interior']); ?>
+        <?php if ($hasIn): ?>
+        <div style="display:flex;gap:8px;padding:12px 14px 0">
+          <button type="button" class="btn btn-dark btn-sm m3d-tab on" data-m3d="ext">Exterior</button>
+          <button type="button" class="btn btn-outline btn-sm m3d-tab" data-m3d="int">Interior</button>
+        </div>
+        <?php endif; ?>
+        <model-viewer id="m3dView" src="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" data-ext="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" data-int="<?= $hasIn ? e(base('assets/uploads/' . $car['model_3d_interior'])) : '' ?>" alt="3D model of <?= e(vehicleTitle($car)) ?>" auto-rotate camera-controls shadow-intensity="1" style="width:100%;height:380px;background:#0a1630"></model-viewer>
         <div class="card-pad" style="padding-top:10px"><span class="badge info">Interactive 3D</span> <small class="muted">Drag to spin &middot; scroll to zoom &middot; right-drag to pan</small></div>
       </div>
+      <?php if ($hasIn): ?>
+      <script>
+      (function () {
+        var v = document.getElementById('m3dView');
+        document.querySelectorAll('.m3d-tab').forEach(function (b) {
+          b.addEventListener('click', function () {
+            document.querySelectorAll('.m3d-tab').forEach(function (x) { x.classList.remove('on', 'btn-dark'); x.classList.add('btn-outline'); });
+            b.classList.add('on', 'btn-dark'); b.classList.remove('btn-outline');
+            var k = b.getAttribute('data-m3d');
+            v.src = k === 'int' ? v.getAttribute('data-int') : v.getAttribute('data-ext');
+            v.setAttribute('camera-orbit', k === 'int' ? '0deg 75deg 2.2m' : '0deg 75deg 4m');
+          });
+        });
+      })();
+      </script>
+      <?php endif; ?>
       <?php endif; ?>
       <div class="card" style="overflow:hidden" id="viewer">
         <div class="spin-view" id="spinView">
