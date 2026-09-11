@@ -198,6 +198,11 @@ CREATE TABLE IF NOT EXISTS rentals (
   INDEX idx_rent_listing (listing_id), INDEX idx_rent_user (user_id), INDEX idx_rent_dates (pickup_at, return_at)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS settings (
+  k VARCHAR(60) PRIMARY KEY,
+  v TEXT NOT NULL
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS rental_charges (
   id INT AUTO_INCREMENT PRIMARY KEY,
   rental_id INT NOT NULL,
@@ -233,6 +238,7 @@ CREATE TABLE support_tickets (
   user_id INT DEFAULT NULL, subject VARCHAR(160) NOT NULL, category VARCHAR(60) DEFAULT 'general',
   priority ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
   message TEXT NOT NULL, status ENUM('open','processing','completed') NOT NULL DEFAULT 'open',
+  resolution TEXT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

@@ -135,3 +135,13 @@ install.php                setup verification + API catalogue
 - Offer loop: seller accept/counter/reject notifies the buyer; accept holds the car 48h (enforced in `checkout.php` + `car.php`); buyers one-click accept counters from `account.php`.
 - `agreement.php` generates the sale agreement from the order and e-signs it (OTP + typed-name consent) for buyer and seller; signatures gate the handover.
 - Delivery handover on `order.php`: OTP ceremony with odometer/fuel/notes/photos, sets the real delivery date, marks the car SOLD and notifies both sides.
+
+## 10. Admin ops: settings, enquiries, refunds, broadcast, complaints
+
+- `admin/settings.php` - live business knobs (booking advance, rental GST / weekly discount / fuel rate, offer-hold hours, helpline, support email) stored in the `settings` table; every consumer reads them via `setting()`, so changes apply to new checkouts and quotes with no deploy.
+- `admin/enquiries.php` - buyer Q&A moderation (spam removal) plus valuation-lead pipeline (new -> contacted -> inspection -> closed).
+- `admin/orders.php` gained a Handover column: ceremony record (date, odo/fuel, notes, photos) or the pending OTP for trips awaiting handover.
+- `admin/payments.php` - one-click refunds: live `pay_*` bookings are refunded through the Razorpay API, test rows are recorded as refunded; both write the escrow ledger and notify the buyer.
+- `admin/broadcast.php` - notification composer with live audience counts (all / buyers / sellers) plus a recent-send log.
+- `admin/complaints.php` - listing-report queue with the reported car + seller inline and a recorded resolution that is messaged to the reporter on close.
+- Dashboard: rental KPIs (trips on road, overdue returns, rental revenue) and new attention items for complaints and overdue returns.

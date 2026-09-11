@@ -52,7 +52,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'status' => 'open',
         ]);
         notifyAdmins('Roadside SOS', $r['booking_no'] . ' needs help.', 'admin/support.php');
-        flash('success', 'SOS raised. Our roadside team will call you in minutes - helpline 1800 200 2424.');
+        flash('success', 'SOS raised. Our roadside team will call you in minutes - helpline ' . setting('helpline', '1800 200 2424') . '.');
         redirect(base('rental.php?id=' . $id));
     } elseif ($action === 'return' && $status === 'active') {
         $odo = (int) ($_POST['odo'] ?? 0);
@@ -63,7 +63,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $r['return_odo'] = $odo;
         [$driven, $included, $extraKm, $kmAmt] = rentalKmMath($r);
         $fuelShort = max(0, (int) ($r['pickup_fuel'] ?? 0) - $fuel);
-        $fuelAmt = round($fuelShort * RENTAL_FUEL_PER_PCT, 2);
+        $fuelAmt = round($fuelShort * rentalFuelRate(), 2);
         $lateHrs = max(0, (int) ceil((time() - strtotime((string) $r['return_at'])) / 3600));
         $lateAmt = $lateHrs > 0 ? round($lateHrs * ((float) $r['price_per_day'] / 24) * 1.5, 2) : 0.0;
         q('UPDATE rentals SET status = ?, return_odo = ?, return_fuel = ?, return_notes = ? WHERE id = ?',
@@ -167,7 +167,7 @@ renderHeader('Rental ' . $r['booking_no'], 'rent');
         </div>
         <div class="card card-pad" style="margin-top:18px;border-color:#fecaca">
           <h2 style="font-size:1.15rem">Emergency / roadside assistance</h2>
-          <p class="muted" style="font-size:13px">Breakdown, accident or flat tyre? Raise an SOS - helpline <b class="num">1800 200 2424</b> (24x7).</p>
+          <p class="muted" style="font-size:13px">Breakdown, accident or flat tyre? Raise an SOS - helpline <b class="num"><?= e((string) setting('helpline', '1800 200 2424')) ?></b> (24x7).</p>
           <form method="post" class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
             <?= csrfField() ?><input type="hidden" name="action" value="sos">
             <div><label class="form-label">Your location</label><input class="form-control" name="sos_loc" placeholder="Road / landmark / GPS" required></div>

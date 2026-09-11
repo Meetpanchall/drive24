@@ -53,14 +53,18 @@ function rentalAvailable(int $listingId, string $pickupAt, string $returnAt, int
 }
 
 /** Price breakup for a trip. Returns days, base, discount, tax, deposit, total (+payable). */
+function rentalTaxPct(): float { return (float) setting('rental_tax_pct', RENTAL_TAX_PCT); }
+function rentalWeeklyOff(): float { return (float) setting('rental_weekly_off', RENTAL_WEEKLY_OFF_PCT); }
+function rentalFuelRate(): float { return (float) setting('rental_fuel_per_pct', RENTAL_FUEL_PER_PCT); }
+
 function rentalQuote(array $car, string $pickupAt, string $returnAt): array
 {
     $ppd = (float) ($car['price_per_day'] ?? 0);
     $hours = max(1, (int) ceil((strtotime($returnAt) - strtotime($pickupAt)) / 3600));
     $days = max(1, (int) ceil($hours / 24));
     $base = round($days * $ppd, 2);
-    $discount = $days >= 7 ? round($base * RENTAL_WEEKLY_OFF_PCT / 100, 2) : 0.0;
-    $tax = round(($base - $discount) * RENTAL_TAX_PCT / 100, 2);
+    $discount = $days >= 7 ? round($base * rentalWeeklyOff() / 100, 2) : 0.0;
+    $tax = round(($base - $discount) * rentalTaxPct() / 100, 2);
     $deposit = (float) ($car['security_deposit'] ?? 0);
     return [
         'days' => $days, 'hours' => $hours, 'price_per_day' => $ppd,

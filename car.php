@@ -83,7 +83,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'category' => 'report', 'priority' => 'high',
             'message' => "Listing: " . base('car.php?id=' . $id) . "\nReason: " . $reason . "\n\n" . $detail,
             'status' => 'open']);
-        notifyAdmins('Listing reported', 'Listing #' . $id . ' reported: ' . $reason, 'admin/support.php');
+        notifyAdmins('Listing reported', 'Listing #' . $id . ' reported: ' . $reason, 'admin/complaints.php');
         flash('success', 'Thanks - our trust team will review this listing.');
     }
     redirect(base('car.php?id=' . $id));

@@ -45,6 +45,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $rows = fetchAll("SELECT o.*, v.make, v.model, v.year, u.name AS buyer, rc.status AS rc_status, rc.rto_office, rc.application_no FROM orders o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id JOIN users u ON u.id = o.buyer_id LEFT JOIN rc_transfers rc ON rc.order_id = o.id ORDER BY o.id DESC");
+$handDocs = [];
+foreach (fetchAll("SELECT order_id, file_url, doc_name FROM documents WHERE doc_type = 'handover' ORDER BY id") as $d) { $handDocs[(int) $d['order_id']][] = $d; }
 $counts = [];
 foreach ($rows as $r) { $k = (string) $r[$statusCol]; $counts[$k] = ($counts[$k] ?? 0) + 1; }
 
@@ -56,9 +58,9 @@ adminHeader('Order lifecycle', 'orders');
   <?php foreach ($counts as $k => $n): ?><div class="kpi"><small><?= e(ucfirst(str_replace('_', ' ', $k))) ?></small><b class="num"><?= (int) $n ?></b></div><?php endforeach; ?>
 </div>
 <div class="table-wrap" style="margin-top:14px"><table class="data">
-  <thead><tr><th>Order</th><th>Vehicle</th><th>Buyer</th><th>Amount</th><th>RC transfer</th><th>Status</th><th>Update</th></tr></thead>
+  <thead><tr><th>Order</th><th>Vehicle</th><th>Buyer</th><th>Amount</th><th>RC transfer</th><th>Handover</th><th>Status</th><th>Update</th></tr></thead>
   <tbody>
-  <?php if (!$rows): ?><tr><td colspan="7" class="empty">Nothing here yet.</td></tr><?php endif; ?>
+  <?php if (!$rows): ?><tr><td colspan="8" class="empty">Nothing here yet.</td></tr><?php endif; ?>
   <?php foreach ($rows as $r): ?>
     <tr>
       <td class="num"><?= e((string) ((string) $r['order_no'])) ?></td>
@@ -79,6 +81,17 @@ adminHeader('Order lifecycle', 'orders');
             <button class="btn btn-dark btn-sm" type="submit">Save RC</button>
           </form>
         </details></td>
+      <td><?php if (!empty($r['handover_at'])): ?>
+          <?= statusBadge('verified') ?>
+          <div class="muted num" style="font-size:12px"><?= e(date('d M H:i', strtotime((string) $r['handover_at']))) ?><br>
+          odo <?= number_format((int) $r['handover_odo']) ?> km &middot; fuel <?= (int) $r['handover_fuel'] ?>%</div>
+          <?php if (!empty($r['handover_notes'])): ?><div class="muted" style="font-size:12px"><?= e((string) $r['handover_notes']) ?></div><?php endif; ?>
+          <?php foreach ($handDocs[(int) $r['id']] ?? [] as $hd): ?>
+            <div><a style="font-size:12px" href="<?= e(base('assets/uploads/' . $hd['file_url'])) ?>" target="_blank" rel="noopener"><?= e((string) $hd['doc_name']) ?> &nearr;</a></div>
+          <?php endforeach; ?>
+        <?php elseif (in_array($r[$statusCol], ['processing', 'in_transit'], true)): ?>
+          <small class="muted">OTP <b class="num"><?= e((string) ($r['handover_otp'] ?? '-')) ?></b><br>awaiting ceremony</small>
+        <?php else: ?><small class="muted">-</small><?php endif; ?></td>
       <td><?= statusBadge((string) $r[$statusCol]) ?></td>
       <td>
         <form method="post" style="display:flex;gap:6px;align-items:center">

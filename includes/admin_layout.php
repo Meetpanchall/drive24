@@ -18,6 +18,7 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
             'rentals'  => ['Rentals', 'admin/rentals.php'],
             'payments' => ['Payments &amp; refunds', 'admin/payments.php'],
             'offers'   => ['Offers', 'admin/offers.php'],
+            'enquiries' => ['Enquiries &amp; leads', 'admin/enquiries.php'],
             'payouts'  => ['Seller payouts', 'admin/payouts.php'],
             'finance'  => ['Loan applications', 'admin/finance.php'],
         ],
@@ -26,11 +27,14 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
             'sellers'   => ['Sellers &amp; dealers', 'admin/sellers.php'],
             'kyc'       => ['KYC &amp; compliance', 'admin/kyc.php'],
             'support'   => ['Support tickets', 'admin/support.php'],
+            'complaints' => ['Complaints &amp; disputes', 'admin/complaints.php'],
             'reviews'   => ['Reviews &amp; ratings', 'admin/reviews.php'],
+            'broadcast' => ['Broadcast', 'admin/broadcast.php'],
         ],
         'Insights' => [
             'reports'  => ['Analytics &amp; reports', 'admin/reports.php'],
             'activity' => ['Audit log', 'admin/activity.php'],
+            'settings' => ['System settings', 'admin/settings.php'],
         ],
     ];
     $sellerMenu = [

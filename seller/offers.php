@@ -13,9 +13,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if ($action === 'accept') {
             updateRow('offers', ['status' => 'accepted'], 'id = ?', [$offerId]);
             updateRow('listings', ['price' => (float) $offer['amount'], 'hold_buyer_id' => $buyerId,
-                'hold_until' => date('Y-m-d H:i:s', strtotime('+48 hours'))], 'id = ?', [$listingId]);
-            notify($buyerId, 'Offer accepted', rupees((float) $offer['amount']) . ' - complete your purchase within 48 hours.', 'checkout.php?listing=' . $listingId);
-            flash('success', 'Offer accepted, price updated and car held for the buyer for 48 hours.');
+                'hold_until' => date('Y-m-d H:i:s', strtotime('+' . (int) setting('offer_hold_hours', 48) . ' hours'))], 'id = ?', [$listingId]);
+            notify($buyerId, 'Offer accepted', rupees((float) $offer['amount']) . ' - complete your purchase within ' . (int) setting('offer_hold_hours', 48) . ' hours.', 'checkout.php?listing=' . $listingId);
+            flash('success', 'Offer accepted, price updated and car held for the buyer for ' . (int) setting('offer_hold_hours', 48) . ' hours.');
         } elseif ($action === 'reject') {
             updateRow('offers', ['status' => 'rejected'], 'id = ?', [$offerId]);
             q('UPDATE listings SET hold_buyer_id = NULL, hold_until = NULL WHERE id = ? AND hold_buyer_id = ?', [$listingId, $buyerId]);

@@ -113,7 +113,7 @@ renderHeader('Rental checkout', 'rent');
         <div class="kv"><span>Duration</span><span class="num"><?= $quote['days'] ?> day(s)</span></div>
         <div class="kv"><span>Rental charges</span><span class="num"><?= rupees($quote['base']) ?></span></div>
         <?php if ($quote['discount'] > 0): ?><div class="kv"><span>Weekly discount</span><span class="num">- <?= rupees($quote['discount']) ?></span></div><?php endif; ?>
-        <div class="kv"><span>Taxes &amp; fees (<?= RENTAL_TAX_PCT ?>%)</span><span class="num"><?= rupees($quote['tax']) ?></span></div>
+        <div class="kv"><span>Taxes &amp; fees (<?= rentalTaxPct() ?>%)</span><span class="num"><?= rupees($quote['tax']) ?></span></div>
         <div class="kv"><span>Security deposit</span><span class="num"><?= rupees($quote['deposit']) ?></span></div>
         <div class="kv"><span><b>Payable now</b></span><b class="num"><?= rupees($quote['total']) ?></b></div>
         <form method="post" style="margin-top:12px">

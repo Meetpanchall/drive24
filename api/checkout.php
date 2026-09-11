@@ -10,7 +10,7 @@ $car = findListing((int) ($in['listing_id'] ?? 0));
 if (!$car || $car['status'] !== 'approved') { apiJson(['ok' => false, 'message' => 'Car is not available for booking.'], 422); }
 
 $method = in_array($in['method'] ?? '', ['upi', 'card', 'netbanking', 'finance', 'wallet'], true) ? (string) $in['method'] : 'upi';
-$booking = 25000.0;
+$booking = (float) setting('booking_amount', 25000);
 $pdo = db();
 $pdo->beginTransaction();
 try {

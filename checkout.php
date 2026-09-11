@@ -12,10 +12,11 @@ if (!empty($car['hold_until']) && $car['hold_until'] > date('Y-m-d H:i:s') && (i
     redirect(base('cars.php'));
 }
 
+$booking = (float) setting('booking_amount', 25000);
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verifyCsrf();
     $finance = isset($_POST['finance']);
-    $booking = 25000.0;
     $method  = in_array($_POST['method'] ?? 'upi', ['upi', 'card', 'netbanking', 'finance'], true) ? $_POST['method'] : 'upi';
     $loan    = $finance ? (float) ($_POST['loan_amount'] ?? 0) : 0;
     $tenure  = $finance ? (int) ($_POST['tenure'] ?? 60) : 0;
@@ -84,7 +85,7 @@ renderHeader('Checkout', '');
     <form class="card card-pad" method="post">
       <?= csrfField() ?><input type="hidden" name="listing_id" value="<?= (int) $car['id'] ?>">
       <h1 style="font-size:1.4rem">Secure checkout</h1>
-      <p class="muted">Pay a refundable booking amount of <b class="num"><?= rupees(25000) ?></b> to reserve this car. The order, payment and seller payout rows are written inside one MySQL transaction.</p>
+      <p class="muted">Pay a refundable booking amount of <b class="num"><?= rupees($booking) ?></b> to reserve this car. The order, payment and seller payout rows are written inside one MySQL transaction.</p>
       <h3 style="font-size:1rem;margin-top:14px">Delivery or pickup</h3>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         <label class="chip"><input type="radio" name="fulfilment" value="home" checked> Home delivery</label>
@@ -108,7 +109,7 @@ renderHeader('Checkout', '');
         <div><label class="form-label">Loan amount</label><input class="form-control num" type="number" name="loan_amount" value="<?= (int) ((float) $car['price'] * 0.8) ?>"></div>
         <div><label class="form-label">Tenure</label><select class="form-select" name="tenure"><option>48</option><option selected>60</option><option>72</option><option>84</option></select></div>
       </div>
-      <button class="btn btn-primary btn-lg btn-block" style="margin-top:18px" type="submit">Pay <?= rupees(25000) ?> &amp; reserve</button>
+      <button class="btn btn-primary btn-lg btn-block" style="margin-top:18px" type="submit">Pay <?= rupees($booking) ?> &amp; reserve</button>
       <p class="muted" style="font-size:12.5px;margin-top:10px"><?= razorpayEnabled() ? 'You will be redirected to <b>Razorpay</b> to complete the payment securely.' : 'Test mode: no keys configured, so this demo confirms the booking instantly.' ?></p>
       <p class="muted" style="font-size:12.5px;margin-top:4px">Escrow protected &middot; PCI-DSS aligned &middot; 7-day easy return &middot; Free RC transfer.</p>
     </form>
@@ -118,7 +119,7 @@ renderHeader('Checkout', '');
       <h3 style="margin-top:12px;font-size:1.05rem"><?= e(vehicleTitle($car)) ?></h3>
       <div class="kv"><span>Car price</span><span class="num"><?= rupees($car['price']) ?></span></div>
       <div class="kv"><span>RC transfer</span><span class="num"><?= rupees(3499) ?></span></div>
-      <div class="kv"><span>Booking now</span><span class="num"><?= rupees(25000) ?></span></div>
+      <div class="kv"><span>Booking now</span><span class="num"><?= rupees($booking) ?></span></div>
       <div class="kv"><span>EMI option</span><span class="num"><?= rupees($emi) ?>/mo</span></div>
     </aside>
   </div>

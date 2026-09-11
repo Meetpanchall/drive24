@@ -122,11 +122,11 @@ renderHeader('Help and support', '');
         </div>
         <div class="help-line">
           <span class="kv-ic" style="background:#f1e8fd;color:#7c3aed"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.5 19.5 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.13.96.36 1.9.7 2.8a2 2 0 0 1-.45 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.45c.9.34 1.84.57 2.8.7a2 2 0 0 1 1.7 2z"/></svg></span>
-          <span><b class="num">1800 200 2424</b><small>9 AM - 9 PM, all days</small></span>
+          <span><b class="num"><?= e((string) setting('helpline', '1800 200 2424')) ?></b><small><?= e((string) setting('helpline_hours', '9 AM - 9 PM, all days')) ?></small></span>
         </div>
         <div class="help-line">
           <span class="kv-ic" style="background:#eaf1fe;color:#0b5cff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
-          <span><b>care@drive24.in</b><small>We reply within 24 hours</small></span>
+          <span><b><?= e((string) setting('support_email', 'care@drive24.in')) ?></b><small>We reply within 24 hours</small></span>
         </div>
         <a class="live-chat" href="#" data-soon="Live chat is coming soon.">
           <span class="kv-ic" style="background:#d7e6fd;color:#0b5cff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 1 16 0"/><rect x="2" y="13" width="4" height="7" rx="1.5"/><rect x="18" y="13" width="4" height="7" rx="1.5"/><path d="M20 20a4 4 0 0 1-4 2h-2"/></svg></span>

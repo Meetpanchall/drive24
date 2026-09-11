@@ -26,9 +26,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if ($offer && ($offer['status'] ?? '') === 'countered' && (float) ($offer['counter_amount'] ?? 0) > 0) {
             updateRow('offers', ['status' => 'accepted'], 'id = ?', [(int) $offer['id']]);
             updateRow('listings', ['price' => (float) $offer['counter_amount'], 'hold_buyer_id' => $u['id'],
-                'hold_until' => date('Y-m-d H:i:s', strtotime('+48 hours'))], 'id = ?', [(int) $offer['listing_id']]);
+                'hold_until' => date('Y-m-d H:i:s', strtotime('+' . (int) setting('offer_hold_hours', 48) . ' hours'))], 'id = ?', [(int) $offer['listing_id']]);
             notify((int) $offer['seller_id'], 'Counter accepted', rupees((float) $offer['counter_amount']) . ' - the buyer is heading to checkout.', 'seller/offers.php');
-            flash('success', 'Counter accepted at ' . rupees((float) $offer['counter_amount']) . '. Complete checkout within 48 hours.');
+            flash('success', 'Counter accepted at ' . rupees((float) $offer['counter_amount']) . '. Complete checkout within ' . (int) setting('offer_hold_hours', 48) . ' hours.');
             redirect(base('checkout.php?listing=' . (int) $offer['listing_id']));
         }
         flash('error', 'This counter is no longer available.');

@@ -116,7 +116,7 @@ renderHeader(vehicleTitle($car) . ' on rent', 'rent');
     <aside>
       <div class="card card-pad sticky" id="bookBox"
         data-ppd="<?= (float) $car['price_per_day'] ?>" data-dep="<?= (float) $car['security_deposit'] ?>"
-        data-tax="<?= RENTAL_TAX_PCT ?>" data-off="<?= RENTAL_WEEKLY_OFF_PCT ?>">
+        data-tax="<?= rentalTaxPct() ?>" data-off="<?= rentalWeeklyOff() ?>">
         <div class="price num" style="font-size:1.7rem;font-weight:800"><?= rupees($car['price_per_day']) ?><small class="muted" style="font-size:.95rem">/day</small></div>
         <div class="muted num" style="font-size:13px"><?= (int) $car['km_limit_day'] ?> km/day &middot; <?= rupees($car['security_deposit']) ?> refundable deposit</div>
         <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">

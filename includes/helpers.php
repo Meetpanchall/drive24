@@ -326,6 +326,23 @@ function saveModel3D(array $file): ?string
     return move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $name) ? $name : null;
 }
 
+/** Read a site setting (admin/settings.php). Falls back when DB is unreachable. */
+function setting(string $key, mixed $default = ''): mixed
+{
+    static $cache = [];
+    if (array_key_exists($key, $cache)) { return $cache[$key]; }
+    if (!dbReady()) { return $default; }
+    try { $v = fetchValue('SELECT v FROM settings WHERE k = ?', [$key], null); }
+    catch (Throwable) { return $default; }
+    $cache[$key] = $v === null ? $default : $v;
+    return $cache[$key];
+}
+
+function saveSetting(string $key, string $value): void
+{
+    q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [$key, $value]);
+}
+
 /** Sale-agreement e-signatures on an order: ['buyer' => bool, 'seller' => bool]. */
 function orderSignatures(int $orderId): array
 {

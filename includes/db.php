@@ -88,6 +88,7 @@ function ensureExtendedSchema(): void
             ['vehicle_history', 'odometer_verified', 'TINYINT(1) NOT NULL DEFAULT 0'],
             ['vehicle_history', 'rc_verified', 'TINYINT(1) NOT NULL DEFAULT 0'],
             ['support_tickets', 'priority', "ENUM('low','medium','high') NOT NULL DEFAULT 'medium'"],
+            ['support_tickets', 'resolution', 'TEXT DEFAULT NULL'],
        ,
             ['listings', 'rental_enabled', 'TINYINT(1) NOT NULL DEFAULT 0'],
             ['listings', 'price_per_day', 'DECIMAL(10,2) DEFAULT NULL'],
@@ -124,6 +125,14 @@ function ensureExtendedSchema(): void
             }
         }
         db()->exec("UPDATE listings SET rental_enabled = 1, price_per_day = GREATEST(999, ROUND(price/450, -2)), km_limit_day = 250, extra_km_rate = 12.00, security_deposit = 15000.00 WHERE status = 'approved' AND rental_enabled = 0 AND price_per_day IS NULL");
+        $hasSettings = (int) fetchValue(
+            'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?',
+            [$dbName, 'settings'], 0
+        );
+        if ($hasSettings === 0) {
+            db()->exec('CREATE TABLE IF NOT EXISTS settings (k VARCHAR(60) PRIMARY KEY, v TEXT NOT NULL) ENGINE=InnoDB');
+        }
+        db()->exec("INSERT IGNORE INTO settings (k, v) VALUES ('booking_amount','25000'),('rental_tax_pct','18'),('rental_weekly_off','10'),('rental_fuel_per_pct','60'),('offer_hold_hours','48'),('helpline','1800 200 2424'),('helpline_hours','9 AM - 9 PM, all days'),('support_email','care@drive24.in')");
     } catch (Throwable $e) { /* never break a request for a migration */ }
 }
 

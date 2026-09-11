@@ -10,6 +10,9 @@ $kpi = [
     'Revenue'         => (float) fetchValue("SELECT COALESCE(SUM(amount),0) FROM orders WHERE status NOT IN ('cancelled','returned')", [], 0),
     'Test drives'     => (int) fetchValue("SELECT COUNT(*) FROM test_drives WHERE status = 'requested'", [], 0),
     'Open tickets'    => (int) fetchValue("SELECT COUNT(*) FROM support_tickets WHERE status = 'open'", [], 0),
+    'Trips on road'   => (int) fetchValue("SELECT COUNT(*) FROM rentals WHERE status = 'active'", [], 0),
+    'Overdue returns' => (int) fetchValue("SELECT COUNT(*) FROM rentals WHERE status = 'active' AND return_at < NOW()", [], 0),
+    'Rental revenue'  => (float) fetchValue("SELECT COALESCE(SUM(rental_amount + tax - discount),0) FROM rentals WHERE status NOT IN ('pending','cancelled')", [], 0),
 ];
 $monthly = fetchAll("SELECT DATE_FORMAT(created_at,'%b') AS m, COUNT(*) AS c,
     COALESCE(SUM(amount),0) AS revenue FROM orders GROUP BY DATE_FORMAT(created_at,'%Y-%m'), m
@@ -31,6 +34,8 @@ try {
         ['KYC verifications waiting', (int) fetchValue("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'", [], 0), 'admin/kyc.php'],
         ['Open support tickets', (int) fetchValue("SELECT COUNT(*) FROM support_tickets WHERE status = 'open'", [], 0), 'admin/support.php'],
         ['Listing reports to review', (int) fetchValue("SELECT COUNT(*) FROM support_tickets WHERE category = 'report' AND status = 'open'", [], 0), 'admin/support.php'],
+        ['Open complaints & disputes', (int) fetchValue("SELECT COUNT(*) FROM support_tickets WHERE category = 'report' AND status <> 'completed'", [], 0), 'admin/complaints.php'],
+        ['Overdue rental returns', (int) fetchValue("SELECT COUNT(*) FROM rentals WHERE status = 'active' AND return_at < NOW()", [], 0), 'admin/rentals.php'],
         ['Auctions ending in 48 hrs', (int) fetchValue("SELECT COUNT(*) FROM listings WHERE auction_enabled = 1 AND auction_ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 48 HOUR)", [], 0), 'admin/vehicles.php'],
         ['RC transfers in progress', (int) fetchValue("SELECT COUNT(*) FROM rc_transfers WHERE status <> 'transfer_completed'", [], 0), 'admin/orders.php'],
     ];
@@ -40,7 +45,7 @@ adminHeader('Operations dashboard', 'dashboard');
 ?>
 <div class="kpis">
   <?php $i = 0; foreach ($kpi as $label => $v): ?>
-    <div class="kpi"><small><?= e($label) ?></small><b class="num"><?= $label === 'Revenue' ? rupees($v) : number_format((int) $v) ?></b></div>
+    <div class="kpi"><small><?= e($label) ?></small><b class="num"><?= in_array($label, ['Revenue', 'Rental revenue'], true) ? rupees($v) : number_format((int) $v) ?></b></div>
   <?php $i++; endforeach; ?>
 </div>
 
