@@ -920,3 +920,33 @@ a.card{transition:transform .2s ease,box-shadow .25s ease,border-color .2s}
 a.card:hover{text-decoration:none;transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:#c9d8f8}
 /* refinements */
 .btn-block{white-space:normal;text-align:center}
+
+/* ---- car-themed preloader (drives in on every page) ---- */
+.preloader { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(120% 90% at 50% 10%, #10255c 0%, #0a1c48 45%, #060d29 100%);
+  transition: opacity .45s ease, visibility .45s; }
+.preloader.done { opacity: 0; visibility: hidden; pointer-events: none; }
+body:has(> .preloader:not(.done)) { overflow: hidden; }
+.pre-inner { text-align: center; padding: 24px; }
+.pre-car { width: min(240px, 62vw); height: auto; }
+.pre-brand { font: italic 900 30px/1 Arial, Helvetica, sans-serif; letter-spacing: 2px; color: #fff; margin-top: 4px; }
+.pre-brand span { color: #38bdf8; }
+.pre-bar { width: 210px; max-width: 60vw; height: 5px; margin: 14px auto 10px; border-radius: 99px;
+  background: rgba(255,255,255,.14); overflow: hidden; position: relative; }
+.pre-bar i { position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; border-radius: 99px;
+  background: linear-gradient(90deg, #0b5cff, #38bdf8); animation: preSlide 1.1s ease-in-out infinite; }
+.pre-status { color: #9db4dd; font-size: 13px; letter-spacing: .4px; min-height: 18px; }
+.pre-body { animation: preBob 1.1s ease-in-out infinite; }
+.pre-wheel { transform-box: fill-box; transform-origin: center; animation: preSpin .8s linear infinite; }
+.pre-road { animation: preRoad .55s linear infinite; }
+.pre-beam { animation: preGlow 1.4s ease-in-out infinite; }
+.pre-speed { animation: preGlow 1s ease-in-out infinite; }
+@keyframes preSpin { to { transform: rotate(360deg); } }
+@keyframes preBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.6px); } }
+@keyframes preRoad { to { stroke-dashoffset: 30; } }
+@keyframes preGlow { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes preSlide { 0% { left: -40%; } 100% { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .pre-body, .pre-wheel, .pre-road, .pre-beam, .pre-speed, .pre-bar i { animation: none; }
+  .preloader { transition: none; }
+}

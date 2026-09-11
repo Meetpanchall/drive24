@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 46" width="176" height="46"><path d="M6 13 C 55 1, 120 1, 168 12" stroke="#4d82ff" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M20 19 C 62 9, 112 9, 152 17" stroke="#8fb0ff" stroke-width="2.2" fill="none" stroke-linecap="round"/><text x="10" y="40" font-family="Arial,Helvetica,sans-serif" font-size="27" font-weight="900" font-style="italic" letter-spacing="1" fill="#ffffff">DRIVE<tspan fill="#4d82ff">24</tspan></text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100" role="img" aria-label="DRIVE24">
+  <defs>
+    <linearGradient id="d24ww" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7dd3fc"/><stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <path d="M8 14 h64 M200 14 h120" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+  <path d="M92 14 h86" stroke="#7dd3fc" stroke-width="5" stroke-linecap="round"/>
+  <text x="6" y="76" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="900" font-style="italic" letter-spacing="1" fill="#ffffff">DRIVE<tspan fill="url(#d24ww)">24</tspan></text>
+</svg>

@@ -405,4 +405,29 @@
       io.observe(el);
     } else { el.classList.add('visible'); }
   });
+
+  // preloader: car-themed boot splash, hidden once the page is ready
+  var pre = document.getElementById('preloader');
+  if (pre) {
+    var msgs = ['Warming up the engine...', 'Running 280-point inspection...',
+      'Checking vehicle history...', 'Polishing the chrome...', 'Fueling up...'];
+    var mi = 0, preStatus = document.getElementById('preStatus');
+    var cyc = setInterval(function () {
+      mi = (mi + 1) % msgs.length;
+      if (preStatus) { preStatus.textContent = msgs[mi]; }
+    }, 900);
+    var t0 = Date.now(), gone = false;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var hidePre = function () {
+      if (gone) { return; } gone = true;
+      clearInterval(cyc);
+      var wait = reduce ? 0 : Math.max(0, 650 - (Date.now() - t0));
+      setTimeout(function () {
+        pre.classList.add('done');
+        setTimeout(function () { if (pre.parentNode) { pre.parentNode.removeChild(pre); } }, 500);
+      }, wait);
+    };
+    window.addEventListener('load', hidePre);
+    setTimeout(hidePre, 3200); // safety net if load hangs
+  }
 })();
