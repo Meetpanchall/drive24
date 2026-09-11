@@ -128,3 +128,10 @@ install.php                setup verification + API catalogue
 - `rent-pay.php` + `verify-payment.php` (`kind=rental`) - Razorpay payment for rental + deposit; test mode confirms instantly without keys.
 - `rental.php` - trip screen: OTP pickup handover (odometer/fuel/notes), live trip + roadside SOS, return inspection (extra-KM/fuel/late/damage auto-charges), Razorpay deposit refund, review & rating.
 - `my-rentals.php` - booking history; `admin/rentals.php` - ops board for all rental statuses.
+
+## 9. Offers, 3D, e-sign & handover
+
+- Sellers can attach an optional `.glb`/`.gltf` 3D model at listing time; buyers spin it in an interactive viewer on `car.php` and `rent-car.php` (`sell.php` also had its missing photo/odometer inputs restored).
+- Offer loop: seller accept/counter/reject notifies the buyer; accept holds the car 48h (enforced in `checkout.php` + `car.php`); buyers one-click accept counters from `account.php`.
+- `agreement.php` generates the sale agreement from the order and e-signs it (OTP + typed-name consent) for buyer and seller; signatures gate the handover.
+- Delivery handover on `order.php`: OTP ceremony with odometer/fuel/notes/photos, sets the real delivery date, marks the car SOLD and notifies both sides.

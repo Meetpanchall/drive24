@@ -66,16 +66,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'image' => $uploaded !== [] ? 'uploads/' . $uploaded[0]['file'] : 'car' . random_int(1, 6) . '.svg',
             'description' => trim((string) ($_POST['description'] ?? '')),
         ]);
+        $model3d = !empty($_FILES['model_3d']['name'] ?? '') ? saveModel3D($_FILES['model_3d']) : null;
         $created = insert('listings', [
             'vehicle_id' => $vehicleId, 'seller_id' => $u['id'],
             'price' => (float) $_POST['price'], 'original_price' => (float) $_POST['price'],
             'status' => 'pending', 'certified' => 0, 'inspection_score' => 0,
+            'model_3d' => $model3d,
         ]);
         foreach ($uploaded as $i => $ph) {
             insert('listing_images', ['listing_id' => $created, 'image' => $ph['file'], 'label' => $ph['label'], 'sort_order' => $i]);
         }
         logActivity((int) $u['id'], 'listing.created', 'Listing #' . $created);
-        flash('success', 'Listing submitted with ' . count($uploaded) . ' photo(s). It goes live as soon as our team approves it.');
+        flash('success', 'Listing submitted with ' . count($uploaded) . ' photo(s)' . ($model3d ? ' and a 3D model' : '') . '. It goes live as soon as our team approves it.');
         redirect(base('seller/listings.php'));
     }
 }
@@ -155,7 +157,10 @@ renderHeader('Sell your car', 'sell');
           <div><label class="form-label">City</label><input class="form-control" name="city"></div>
           <div><label class="form-label">Area / locality</label><input class="form-control" name="area" placeholder="e.g. Andheri West"></div>
           <div><label class="form-label">Expected price</label><input class="form-control num" type="number" name="price" required></div>
+          <div style="grid-column:1/-1"><label class="form-label">Car photos (up to 8: front, rear, interior, odometer, VIN plate, engine, tyres...)</label><input class="form-control" type="file" name="photos[]" accept=".jpg,.jpeg,.png,.webp" multiple></div>
+          <div style="grid-column:1/-1"><label class="form-label">3D model - optional (.glb / .gltf, max 30 MB)</label><input class="form-control" type="file" name="model_3d" accept=".glb,.gltf"><small class="muted">Buyers can spin your car in 3D on the car page. Skip if you don't have one.</small></div>
           <div style="grid-column:1/-1"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3"></textarea></div>
+          <label class="chip" style="grid-column:1/-1"><input type="checkbox" name="odometer_ok" value="1" required> I confirm the odometer reading is genuine and accept the signed odometer disclosure</label>
           <div style="grid-column:1/-1"><button class="btn btn-dark btn-lg" type="submit">Submit listing for approval</button></div>
         </form>
       </div>

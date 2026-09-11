@@ -143,7 +143,7 @@ function confirmBookingPayment(int $orderId, string $txnRef, string $method): vo
             'buyer_id' => (int) $order['buyer_id'], 'seller_id' => (int) $car['seller_id'],
             'status' => 'sale_completed',
         ]);
-        q("UPDATE listings SET status = 'reserved' WHERE id = ?", [(int) $order['listing_id']]);
+        q("UPDATE listings SET status = 'reserved', hold_buyer_id = NULL, hold_until = NULL WHERE id = ?", [(int) $order['listing_id']]);
         insert('payouts', ['seller_id' => (int) $car['seller_id'], 'order_id' => $orderId, 'amount' => (float) $car['price'] * 0.96, 'status' => 'pending']);
         $pdo->commit();
     notify((int) $order['buyer_id'], 'Booking confirmed', 'Order ' . $order['order_no'] . ' - ' . vehicleTitle($car), 'order.php?id=' . $orderId);

@@ -688,3 +688,12 @@ a.go-chip:hover{text-decoration:none;filter:brightness(.94)}
 .alert.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
 @media(max-width:900px){.rent-bar{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.rent-bar{grid-template-columns:1fr}.spin-bar{left:24px;right:24px}}
+
+/* sale agreement + 3D viewer */
+.agree-doc{border-top:4px solid var(--primary)}
+.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.sig-box{border:1.5px dashed var(--line-strong);border-radius:12px;padding:12px 14px}
+.sig-box small{color:var(--muted);font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.sig-box b{display:block;margin-top:4px}
+model-viewer{display:block;width:100%}
+@media(max-width:640px){.sig-grid{grid-template-columns:1fr}}

@@ -94,6 +94,14 @@ function ensureExtendedSchema(): void
             ['listings', 'km_limit_day', 'INT NOT NULL DEFAULT 250'],
             ['listings', 'extra_km_rate', 'DECIMAL(8,2) NOT NULL DEFAULT 12.00'],
             ['listings', 'security_deposit', 'DECIMAL(10,2) NOT NULL DEFAULT 10000.00'],
+            ['listings', 'model_3d', 'VARCHAR(160) DEFAULT NULL'],
+            ['listings', 'hold_buyer_id', 'INT DEFAULT NULL'],
+            ['listings', 'hold_until', 'DATETIME DEFAULT NULL'],
+            ['orders', 'handover_otp', 'VARCHAR(10) DEFAULT NULL'],
+            ['orders', 'handover_odo', 'INT DEFAULT NULL'],
+            ['orders', 'handover_fuel', 'TINYINT DEFAULT NULL'],
+            ['orders', 'handover_notes', 'VARCHAR(255) DEFAULT NULL'],
+            ['orders', 'handover_at', 'DATETIME DEFAULT NULL'],
         ];
         foreach ($needCols as [$tbl, $colName, $def]) {
             $n = (int) fetchValue(

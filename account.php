@@ -21,6 +21,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         q('DELETE FROM saved_searches WHERE id = ? AND user_id = ?', [(int) ($_POST['id'] ?? 0), $u['id']]);
         flash('success', 'Saved search deleted.');
     }
+    } elseif ($action === 'accept_counter') {
+        $offer = fetchOne('SELECT o.*, l.seller_id FROM offers o JOIN listings l ON l.id = o.listing_id WHERE o.id = ? AND o.buyer_id = ?', [(int) ($_POST['offer_id'] ?? 0), $u['id']]);
+        if ($offer && ($offer['status'] ?? '') === 'countered' && (float) ($offer['counter_amount'] ?? 0) > 0) {
+            updateRow('offers', ['status' => 'accepted'], 'id = ?', [(int) $offer['id']]);
+            updateRow('listings', ['price' => (float) $offer['counter_amount'], 'hold_buyer_id' => $u['id'],
+                'hold_until' => date('Y-m-d H:i:s', strtotime('+48 hours'))], 'id = ?', [(int) $offer['listing_id']]);
+            notify((int) $offer['seller_id'], 'Counter accepted', rupees((float) $offer['counter_amount']) . ' - the buyer is heading to checkout.', 'seller/offers.php');
+            flash('success', 'Counter accepted at ' . rupees((float) $offer['counter_amount']) . '. Complete checkout within 48 hours.');
+            redirect(base('checkout.php?listing=' . (int) $offer['listing_id']));
+        }
+        flash('error', 'This counter is no longer available.');
     redirect(base('account.php'));
 }
 
@@ -99,13 +110,19 @@ renderHeader('My account', '');
 
       <h2 style="font-size:1.2rem;margin-top:24px">My offers</h2>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th>Car</th><th>Offered</th><th>Counter</th><th>Status</th></tr></thead>
+        <thead><tr><th>Car</th><th>Offered</th><th>Counter</th><th>Status</th><th></th></tr></thead>
         <tbody>
-        <?php if (!$myOffers): ?><tr><td colspan="4" class="empty">No offers submitted.</td></tr><?php endif; ?>
+        <?php if (!$myOffers): ?><tr><td colspan="5" class="empty">No offers submitted.</td></tr><?php endif; ?>
         <?php foreach ($myOffers as $o): ?>
           <tr><td><?= e($o['make'] . ' ' . $o['model']) ?></td><td class="num"><?= rupees($o['amount']) ?></td>
             <td class="num"><?= $o['counter_amount'] ? rupees($o['counter_amount']) : '&mdash;' ?></td>
-            <td><?= statusBadge((string) $o['status']) ?></td></tr>
+            <td><?= statusBadge((string) $o['status']) ?></td>
+            <td><?php if (($o['status'] ?? '') === 'countered'): ?>
+              <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="accept_counter"><input type="hidden" name="offer_id" value="<?= (int) $o['id'] ?>">
+                <button class="btn btn-primary btn-sm" type="submit">Accept <?= rupees($o['counter_amount']) ?> &amp; buy</button></form>
+            <?php elseif (($o['status'] ?? '') === 'accepted'): ?>
+              <a class="btn btn-primary btn-sm" href="<?= e(base('checkout.php?listing=' . (int) $o['listing_id'])) ?>">Buy now</a>
+            <?php else: ?><small class="muted"><?= ($o['status'] ?? '') === 'new' ? 'With seller' : '&mdash;' ?></small><?php endif; ?></td></tr>
         <?php endforeach; ?>
         </tbody></table></div>
 

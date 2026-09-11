@@ -313,6 +313,34 @@ function saveUpload(array $file, string $prefix = 'img'): ?string
     return move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $name) ? $name : null;
 }
 
+/** Store an uploaded 3D model (.glb/.gltf, max 30 MB). Returns the filename or null. */
+function saveModel3D(array $file): ?string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) { return null; }
+    if ((int) ($file['size'] ?? 0) > 30 * 1024 * 1024) { return null; }
+    $ext = strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+    if (!in_array($ext, ['glb', 'gltf'], true)) { return null; }
+    $dir = __DIR__ . '/../assets/uploads';
+    if (!is_dir($dir)) { @mkdir($dir, 0755, true); }
+    $name = 'model3d_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    return move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $name) ? $name : null;
+}
+
+/** Sale-agreement e-signatures on an order: ['buyer' => bool, 'seller' => bool]. */
+function orderSignatures(int $orderId): array
+{
+    $out = ['buyer' => false, 'seller' => false];
+    if (!dbReady()) { return $out; }
+    $ord = fetchOne('SELECT o.buyer_id, l.seller_id FROM orders o JOIN listings l ON l.id = o.listing_id WHERE o.id = ?', [$orderId]);
+    if (!$ord) { return $out; }
+    $rows = fetchAll("SELECT user_id FROM documents WHERE order_id = ? AND doc_type = 'sale_agreement' AND status = 'verified'", [$orderId]);
+    foreach ($rows as $r) {
+        if ((int) $r['user_id'] === (int) $ord['buyer_id']) { $out['buyer'] = true; }
+        if ((int) $r['user_id'] === (int) $ord['seller_id']) { $out['seller'] = true; }
+    }
+    return $out;
+}
+
 /** Store an uploaded document (image or PDF) for KYC / vault. */
 function saveDocument(array $file, string $prefix = 'doc'): ?string
 {

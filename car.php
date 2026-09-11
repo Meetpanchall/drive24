@@ -143,6 +143,13 @@ renderHeader(vehicleTitle($car), 'cars');
   <p class="muted" style="font-size:13px"><a href="<?= e(base('index.php')) ?>">Home</a> / <a href="<?= e(base('cars.php')) ?>">Used cars</a> / <?= e(vehicleTitle($car)) ?></p>
   <div class="split-3">
     <div>
+      <?php if (!empty($car['model_3d'])): ?>
+      <div class="card model3d-card" style="overflow:hidden;margin-bottom:18px">
+        <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+        <model-viewer src="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" alt="3D model of <?= e(vehicleTitle($car)) ?>" auto-rotate camera-controls shadow-intensity="1" style="width:100%;height:380px;background:#0a1630"></model-viewer>
+        <div class="card-pad" style="padding-top:10px"><span class="badge info">Interactive 3D</span> <small class="muted">Drag to spin &middot; scroll to zoom &middot; right-drag to pan</small></div>
+      </div>
+      <?php endif; ?>
       <div class="card" style="overflow:hidden">
         <div class="gallery">
           <img id="galMain" src="<?= e($gallery[0]['src']) ?>" alt="<?= e(vehicleTitle($car)) ?>" style="width:100%;aspect-ratio:16/10;object-fit:cover">
@@ -389,7 +396,12 @@ renderHeader(vehicleTitle($car), 'cars');
         <?php endif; ?>
         <div class="muted num" style="font-size:13.5px;margin-top:4px">EMI from <b><?= rupees($emi) ?></b>/month</div>
         <div style="display:flex;gap:8px;margin-top:14px">
-          <a class="btn btn-primary" style="flex:1" href="<?= e(base('checkout.php?listing=' . $id)) ?>">Buy now</a>
+          <?php $heldOut = !empty($car['hold_until']) && $car['hold_until'] > date('Y-m-d H:i:s') && (!$me || (int) ($car['hold_buyer_id'] ?? 0) !== (int) $me['id']); ?>
+          <?php if ($heldOut): ?>
+            <span class="btn btn-outline" style="flex:1;opacity:.6;pointer-events:none">Reserved for another buyer</span>
+          <?php else: ?>
+            <a class="btn btn-primary" style="flex:1" href="<?= e(base('checkout.php?listing=' . $id)) ?>">Buy now</a>
+          <?php endif; ?>
           <button class="btn btn-outline fav <?= $saved ? 'on' : '' ?>" style="position:static;width:auto;border-radius:10px" type="button" data-wishlist="<?= $id ?>">&#10084; Save</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px">

@@ -22,6 +22,13 @@ renderHeader(vehicleTitle($car) . ' on rent', 'rent');
   <p class="muted" style="font-size:13px"><a href="<?= e(base('index.php')) ?>">Home</a> / <a href="<?= e(base('rent.php')) ?>">Rentals</a> / <?= e(vehicleTitle($car)) ?></p>
   <div class="split-3">
     <div>
+      <?php if (!empty($car['model_3d'])): ?>
+      <div class="card model3d-card" style="overflow:hidden;margin-bottom:18px">
+        <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+        <model-viewer src="<?= e(base('assets/uploads/' . $car['model_3d'])) ?>" alt="3D model of <?= e(vehicleTitle($car)) ?>" auto-rotate camera-controls shadow-intensity="1" style="width:100%;height:380px;background:#0a1630"></model-viewer>
+        <div class="card-pad" style="padding-top:10px"><span class="badge info">Interactive 3D</span> <small class="muted">Drag to spin &middot; scroll to zoom &middot; right-drag to pan</small></div>
+      </div>
+      <?php endif; ?>
       <div class="card" style="overflow:hidden" id="viewer">
         <div class="spin-view" id="spinView">
           <img id="spinImg" src="<?= e($gallery[0]['src']) ?>" alt="<?= e(vehicleTitle($car)) ?> - 360 view" draggable="false">

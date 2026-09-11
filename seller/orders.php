@@ -28,9 +28,9 @@ $rows = fetchAll('SELECT o.*, v.make, v.model, v.year, b.name AS buyer, b.mobile
 adminHeader('Sales orders', 'orders', 'seller');
 ?>
 <div class="table-wrap"><table class="data">
-  <thead><tr><th>Order</th><th>Buyer</th><th>Car</th><th>Amount</th><th>Status</th><th>Delivery</th><th>Rate buyer</th></tr></thead>
+  <thead><tr><th>Order</th><th>Buyer</th><th>Car</th><th>Amount</th><th>Status</th><th>Agreement</th><th>Delivery</th><th>Rate buyer</th></tr></thead>
   <tbody>
-  <?php if (!$rows): ?><tr><td colspan="7" class="empty">No sales yet - approved listings appear in the marketplace.</td></tr><?php endif; ?>
+  <?php if (!$rows): ?><tr><td colspan="8" class="empty">No sales yet - approved listings appear in the marketplace.</td></tr><?php endif; ?>
   <?php foreach ($rows as $r): ?>
     <tr>
       <td class="num"><?= e($r['order_no']) ?><div class="muted" style="font-size:12px"><?= e(date('d M Y', strtotime((string) $r['created_at']))) ?></div></td>
@@ -38,6 +38,9 @@ adminHeader('Sales orders', 'orders', 'seller');
       <td><?= e($r['year'] . ' ' . $r['make'] . ' ' . $r['model']) ?></td>
       <td class="num"><?= rupees($r['amount']) ?></td>
       <td><?= statusBadge((string) $r['status']) ?></td>
+      <td><?php $sg = orderSignatures((int) $r['id']); ?>
+        <?= ($sg['buyer'] && $sg['seller']) ? statusBadge('verified') : statusBadge('pending') ?>
+        <div><a class="btn btn-ghost btn-sm" href="<?= e(base('agreement.php?order=' . (int) $r['id'])) ?>"><?= $sg['seller'] ? 'View' : 'Sign now' ?></a></div></td>
       <td class="num"><?= e($r['delivery_date'] ? date('d M Y', strtotime((string) $r['delivery_date'])) : '-') ?></td>
       <td><?php if ((int) $r['rated']): ?><small class="muted">Rated ✓</small>
         <?php else: ?><form method="post" style="display:flex;gap:6px"><?= csrfField() ?>

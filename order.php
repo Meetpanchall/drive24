@@ -32,6 +32,44 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         } else {
             flash('error', 'Returns are accepted within 7 days of delivery.');
         }
+    } elseif (($_POST['action'] ?? '') === 'handover') {
+        $ord = fetchOne('SELECT o.*, l.seller_id FROM orders o JOIN listings l ON l.id = o.listing_id WHERE o.id = ? AND o.buyer_id = ?', [$id, $u['id']]);
+        $sigs = orderSignatures($id);
+        $otp = trim((string) ($_POST['otp'] ?? ''));
+        $odo = (int) ($_POST['odo'] ?? 0);
+        $fuel = (int) ($_POST['fuel'] ?? -1);
+        if (!$ord || !in_array($ord['status'], ['processing', 'in_transit'], true)) {
+            flash('error', 'Handover opens once documentation starts.');
+        } elseif (!$sigs['buyer'] || !$sigs['seller']) {
+            flash('error', 'Both parties must sign the sale agreement before handover.');
+        } elseif ($otp === '' || !hash_equals((string) ($ord['handover_otp'] ?? ''), $otp)) {
+            flash('error', 'Wrong handover OTP. Use the code shown on this page.');
+        } elseif ($odo <= 0) {
+            flash('error', 'Record the odometer reading from the dashboard.');
+        } elseif ($fuel < 0 || $fuel > 100) {
+            flash('error', 'Record fuel level as 0-100%.');
+        } else {
+            $saved = 0;
+            if (!empty($_FILES['handover_photos']['name'][0] ?? '')) {
+                foreach ($_FILES['handover_photos']['name'] as $i => $nm) {
+                    if ($i >= 3) { break; }
+                    $f = ['name' => $nm, 'type' => $_FILES['handover_photos']['type'][$i], 'tmp_name' => $_FILES['handover_photos']['tmp_name'][$i],
+                        'error' => $_FILES['handover_photos']['error'][$i], 'size' => $_FILES['handover_photos']['size'][$i]];
+                    $fn = saveUpload($f, 'handover');
+                    if ($fn !== null) {
+                        insert('documents', ['user_id' => $u['id'], 'order_id' => $id, 'doc_type' => 'handover',
+                            'doc_name' => 'Delivery handover photo ' . ($i + 1), 'file_url' => $fn, 'status' => 'verified']);
+                        $saved++;
+                    }
+                }
+            }
+            q('UPDATE orders SET status = ?, delivery_date = CURDATE(), handover_odo = ?, handover_fuel = ?, handover_notes = ?, handover_at = NOW() WHERE id = ?',
+                ['delivered', $odo, $fuel, mb_substr(trim((string) ($_POST['notes'] ?? '')), 0, 255), $id]);
+            q("UPDATE listings l JOIN orders o ON o.listing_id = l.id SET l.status = 'sold' WHERE o.id = ?", [$id]);
+            notify((int) $ord['seller_id'], 'Car handed over', 'Order ' . $ord['order_no'] . ' delivered - escrow releases after the return window.', 'seller/orders.php');
+            notifyAdmins('Order delivered', $ord['order_no'] . ' handed over with ceremony.', 'admin/orders.php');
+            flash('success', 'Handover complete' . ($saved ? ' with ' . $saved . ' photo(s)' : '') . '. Enjoy your car!');
+        }
     } elseif (($_POST['action'] ?? '') === 'review') {
         $ord = fetchOne('SELECT o.*, l.seller_id FROM orders o JOIN listings l ON l.id = o.listing_id WHERE o.id = ? AND o.buyer_id = ?', [$id, $u['id']]);
         $rating = (int) ($_POST['rating'] ?? 0);
@@ -52,6 +90,10 @@ $order = fetchOne('SELECT o.*, v.make, v.model, v.year, v.variant, v.image, v.re
     FROM orders o JOIN listings l ON l.id = o.listing_id JOIN vehicles v ON v.id = l.vehicle_id JOIN users u ON u.id = l.seller_id
     WHERE o.id = ? AND o.buyer_id = ?', [$id, $u['id']]);
 if (!$order) { flash('error', 'Order not found.'); redirect(base('orders.php')); }
+if (empty($order['handover_otp'])) {
+    $order['handover_otp'] = (string) random_int(100000, 999999);
+    q('UPDATE orders SET handover_otp = ? WHERE id = ?', [$order['handover_otp'], $id]);
+}
 $payments = fetchAll('SELECT * FROM payments WHERE order_id = ? ORDER BY id', [$id]);
 $docs = fetchAll('SELECT * FROM documents WHERE order_id = ?', [$id]);
 $escrow = fetchAll('SELECT * FROM escrow_ledger WHERE order_id = ? ORDER BY id', [$id]);
@@ -97,6 +139,30 @@ renderHeader('Order ' . $order['order_no'], '');
         <div class="kv"><span>RTO office</span><span><?= e((string) ($rc['rto_office'] ?? 'Being assigned')) ?></span></div>
         <?php if (!empty($rc['application_no'])): ?><div class="kv"><span>Application no.</span><span class="num"><?= e((string) $rc['application_no']) ?></span></div><?php endif; ?>
         <?php if (!empty($rc['remark'])): ?><div class="kv"><span>Latest update</span><span><?= e((string) $rc['remark']) ?></span></div><?php endif; ?>
+      <?php endif; ?>
+      <?php if (in_array($order_status, ['processing', 'in_transit'], true)): ?>
+        <h3 style="margin-top:18px;font-size:1.05rem">Delivery handover</h3>
+        <?php $hsigs = orderSignatures($id); ?>
+        <?php if (!$hsigs['buyer'] || !$hsigs['seller']): ?>
+          <div class="alert warn">Both parties must <a href="<?= e(base('agreement.php?order=' . $id)) ?>">sign the sale agreement</a> before the handover ceremony unlocks.</div>
+        <?php else: ?>
+          <p class="muted" style="font-size:13.5px">Inspect the car with the delivery executive, record the readings and enter the OTP. <span class="badge info">Demo OTP: <b class="num"><?= e((string) ($order['handover_otp'] ?? '')) ?></b></span></p>
+          <form method="post" enctype="multipart/form-data" class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+            <?= csrfField() ?><input type="hidden" name="action" value="handover">
+            <div><label class="form-label">Handover OTP</label><input class="form-control num" name="otp" inputmode="numeric" maxlength="6" required></div>
+            <div><label class="form-label">Odometer (km)</label><input class="form-control num" type="number" name="odo" min="0" required></div>
+            <div><label class="form-label">Fuel (%)</label><input class="form-control num" type="number" name="fuel" min="0" max="100" required></div>
+            <div><label class="form-label">Condition notes</label><input class="form-control" name="notes" placeholder="e.g. delivery clean, no scratches"></div>
+            <div style="grid-column:1/-1"><label class="form-label">Handover photos (up to 3, optional)</label><input class="form-control" type="file" name="handover_photos[]" accept=".jpg,.jpeg,.png,.webp" multiple></div>
+            <div style="grid-column:1/-1"><button class="btn btn-primary" type="submit">Complete handover</button></div>
+          </form>
+        <?php endif; ?>
+      <?php elseif ($order_status === 'delivered' && !empty($order['handover_at'])): ?>
+        <h3 style="margin-top:18px;font-size:1.05rem">Handover record</h3>
+        <div class="kv"><span>Completed</span><span class="num"><?= e(date('d M Y, h:i A', strtotime((string) $order['handover_at']))) ?></span></div>
+        <div class="kv"><span>Odometer</span><span class="num"><?= number_format((int) $order['handover_odo']) ?> km</span></div>
+        <div class="kv"><span>Fuel</span><span class="num"><?= (int) $order['handover_fuel'] ?>%</span></div>
+        <?php if (!empty($order['handover_notes'])): ?><div class="kv"><span>Notes</span><span><?= e((string) $order['handover_notes']) ?></span></div><?php endif; ?>
       <?php endif; ?>
       <?php if ($loanEmi > 0): ?>
         <h3 style="margin-top:18px;font-size:1.05rem">Loan repayment schedule</h3>
@@ -156,6 +222,10 @@ renderHeader('Order ' . $order['order_no'], '');
         <form method="post" style="margin-top:8px" onsubmit="return confirm('Return this car under the 7-day policy?')"><?= csrfField() ?><input type="hidden" name="action" value="return">
           <button class="btn btn-outline btn-block btn-sm" type="submit">Return within 7 days</button></form>
       <?php endif; ?>
+      <?php $sigs = orderSignatures($id); ?>
+      <a class="btn btn-primary btn-block btn-sm" style="margin-top:8px" href="<?= e(base('agreement.php?order=' . $id)) ?>">Sale agreement <?= ($sigs['buyer'] && $sigs['seller']) ? '&#10003;' : '' ?></a>
+      <div class="kv"><span>Buyer signed</span><span><?= $sigs['buyer'] ? statusBadge('verified') : statusBadge('pending') ?></span></div>
+      <div class="kv"><span>Seller signed</span><span><?= $sigs['seller'] ? statusBadge('verified') : statusBadge('pending') ?></span></div>
       <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('invoice.php?id=' . $id)) ?>">Download invoice</a>
       <a class="btn btn-ghost btn-block btn-sm" href="<?= e(base('support.php')) ?>">Need help?</a>
     </aside>
