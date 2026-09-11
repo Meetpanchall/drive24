@@ -44,7 +44,7 @@ renderHeader('Compare cars', 'compare');
   <?php if (!$cars): ?>
     <div class="card card-pad empty">Add up to 4 cars from any listing to compare them side by side. <a href="<?= e(base('cars.php')) ?>">Browse cars</a></div>
   <?php else: ?>
-    <div class="table-wrap" style="margin-top:16px">
+    <div class="table-wrap sticky-first" style="margin-top:16px">
       <table class="data">
         <thead>
           <tr><th style="min-width:150px">Specification</th>

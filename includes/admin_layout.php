@@ -81,8 +81,10 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
     <?php if ($area === 'admin'): ?><a class="<?= $active === 'profile' ? 'active' : '' ?>" href="<?= e(base('admin/profile.php')) ?>">My profile</a><?php endif; ?>
     <a href="<?= e(base('logout.php')) ?>">Sign out</a>
   </aside>
+  <div class="side-overlay" aria-hidden="true"></div>
   <section class="admin-main">
     <div class="admin-top">
+      <button class="admin-toggle" type="button" aria-label="Open menu" aria-expanded="false">&#9776;</button>
       <h1><?= e($title) ?></h1>
       <div style="margin-left:auto" class="muted"><?= e($u['name'] ?? '') ?> &middot; <?= e(ucfirst((string) ($u['role'] ?? ''))) ?></div>
     </div>

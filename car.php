@@ -357,7 +357,7 @@ renderHeader(vehicleTitle($car), 'cars');
         <?php endif; ?>
         <?php if (!$reviews): ?><p class="muted">No reviews yet - be the first verified buyer to rate this car.</p><?php endif; ?>
         <?php foreach ($reviews as $rv): ?>
-          <div style="border-bottom:1px solid var(--line);padding:10px 0">
+          <div class="q-item">
             <div><b><?= e($rv['author']) ?></b> <span style="color:#b45309"><?= str_repeat('★', (int) $rv['rating']) . str_repeat('☆', 5 - (int) $rv['rating']) ?></span>
               <small class="muted num"><?= e(date('d M Y', strtotime((string) $rv['created_at']))) ?></small></div>
             <?php if ($rv['title']): ?><b><?= e($rv['title']) ?></b><?php endif; ?>
@@ -379,7 +379,7 @@ renderHeader(vehicleTitle($car), 'cars');
         <h2 style="font-size:1.2rem">Questions &amp; answers (<?= count($questions) ?>)</h2>
         <?php if (!$questions): ?><p class="muted">No questions yet - ask the seller anything about this car.</p><?php endif; ?>
         <?php foreach ($questions as $qa): ?>
-          <div style="border-bottom:1px solid var(--line);padding:10px 0">
+          <div class="q-item">
             <div><b>Q:</b> <?= e($qa['question']) ?> <small class="muted">- <?= e($qa['asker']) ?></small></div>
             <?php if (!empty($qa['answer'])): ?>
               <div style="margin-top:4px"><b>A:</b> <?= e($qa['answer']) ?> <small class="muted">(seller)</small></div>

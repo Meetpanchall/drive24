@@ -316,3 +316,93 @@
     });
   });
 })();
+
+/* Phase 3 UX: dismissible alerts, lightbox, admin drawer, submit feedback */
+(function () {
+  // dismissible alert banners + gentle auto-fade for success confirmations
+  document.querySelectorAll('.alert').forEach(function (box) {
+    if (box.querySelector('.alert-x')) { return; }
+    var x = document.createElement('button');
+    x.type = 'button'; x.className = 'alert-x'; x.setAttribute('aria-label', 'Dismiss');
+    x.textContent = '\u00D7';
+    x.addEventListener('click', function () {
+      box.classList.add('fade-out');
+      setTimeout(function () { box.remove(); }, 420);
+    });
+    box.appendChild(x);
+    if (box.classList.contains('success')) {
+      setTimeout(function () {
+        if (!document.body.contains(box)) { return; }
+        box.classList.add('fade-out');
+        setTimeout(function () { box.remove(); }, 450);
+      }, 6500);
+    }
+  });
+
+  // image lightbox (car gallery + any [data-lightbox] image)
+  function openLight(src, alt) {
+    if (!src) { return; }
+    var ov = document.createElement('div');
+    ov.className = 'lightbox';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-label', alt || 'Image preview');
+    var img = document.createElement('img');
+    img.src = src; img.alt = alt || '';
+    var x = document.createElement('button');
+    x.type = 'button'; x.className = 'lb-x'; x.setAttribute('aria-label', 'Close');
+    x.textContent = '\u00D7';
+    ov.appendChild(img); ov.appendChild(x);
+    document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden';
+    function close() { ov.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); }
+    function onKey(ev) { if (ev.key === 'Escape') { close(); } }
+    document.addEventListener('keydown', onKey);
+    ov.addEventListener('click', close);
+  }
+  var gal = document.getElementById('galMain');
+  if (gal) { gal.addEventListener('click', function () { openLight(gal.src, gal.alt); }); }
+  document.querySelectorAll('[data-lightbox]').forEach(function (el) {
+    el.style.cursor = 'zoom-in';
+    el.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      openLight(el.getAttribute('data-lightbox') || el.src, el.alt || '');
+    });
+  });
+
+  // admin/seller sidebar drawer on mobile
+  var toggle = document.querySelector('.admin-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      var open = document.body.classList.toggle('side-open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    var overlay = document.querySelector('.side-overlay');
+    if (overlay) { overlay.addEventListener('click', function () { document.body.classList.remove('side-open'); }); }
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') { document.body.classList.remove('side-open'); }
+    });
+  }
+
+  // submit-button feedback (visual only - never blocks the submit)
+  document.addEventListener('submit', function (ev) {
+    var f = ev.target;
+    if (!f || f.tagName !== 'FORM') { return; }
+    var btn = ev.submitter || f.querySelector('[type=submit]');
+    if (btn && btn.classList && btn.classList.contains('btn')) { btn.classList.add('loading'); }
+  });
+
+  // cascade reveals for cards + tables on every page
+  var extra = document.querySelectorAll('.card.card-pad, .table-wrap');
+  extra.forEach(function (el) {
+    if (el.closest('.hero') || el.classList.contains('reveal')) { return; }
+    el.classList.add('reveal');
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { en.target.classList.add('visible'); io.unobserve(en.target); }
+        });
+      }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+      io.observe(el);
+    } else { el.classList.add('visible'); }
+  });
+})();

@@ -158,3 +158,11 @@ install.php                setup verification + API catalogue
 - `contact.php` - standalone guest-friendly contact page (settings-driven helpline/email) that files support tickets; the footer now points here.
 - `admin/documents.php` - central registry of every uploaded file with type filter and verify/reject (owner notified).
 - `admin/profile.php` - admin name/mobile/city + password change, linked under Session in the sidebar.
+
+## 12. Site-wide premium UX pass
+
+- One additive design-system layer in `assets/css/app.css` (buttons, forms, cards, sticky-header tables with scroll shadows, dotted status pills, gradient KPI bars, joined-segment order tracking, icon alerts, dashed empty states) - no route, API, or logic changed.
+- Admin/seller shell: gradient sidebar with glowing active item, sticky blurred page header, and an off-canvas drawer with overlay on mobile (toggle in `admin_layout.php`).
+- Car experience: dark gallery stage with hover zoom + click-to-lightbox, cinematic 3D stage with glowing Exterior/Interior tabs, styled Q&A and review rows, sticky first column on the compare table.
+- Motion: cascade reveals for cards/tables, submit-button spinners, dismissible + auto-fading success alerts, toast icons - all honouring `prefers-reduced-motion`.
+- Responsive: 2-column car grids on phones, full-bleed table scrolling, stacked tracking steps, compact 3D/360 stages; print stylesheet hides chrome on invoices and agreements.
