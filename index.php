@@ -55,7 +55,11 @@ renderHeader('Buy and sell used cars online', 'home');
       </div>
     </div>
 
-    <form class="search-panel" method="get" action="<?= e(base('cars.php')) ?>">
+    <div class="search-tabs" role="tablist" aria-label="Buy or rent">
+      <button type="button" class="on" data-tab="buy">Buy a car</button>
+      <button type="button" data-tab="rent">Rent a car</button>
+    </div>
+    <form class="search-panel" id="tab-buy" method="get" action="<?= e(base('cars.php')) ?>">
       <div class="search-grid">
         <div><label class="form-label">Keyword</label><input class="form-control" name="q" placeholder="Creta, Swift, Mumbai"></div>
         <div><label class="form-label">Brand</label><select class="form-select" name="make"><option value="">Any brand</option>
@@ -74,6 +78,27 @@ renderHeader('Buy and sell used cars online', 'home');
         <?php endforeach; ?>
       </div>
     </form>
+    <form class="search-panel" id="tab-rent" method="get" action="<?= e(base('rent.php')) ?>" style="display:none">
+      <div class="search-grid" style="grid-template-columns:1.2fr 1fr 1fr auto">
+        <div><label class="form-label">Pickup location</label><input class="form-control" name="pickup_loc" list="homeCities" placeholder="City, airport, hub..."></div>
+        <div><label class="form-label">Pickup</label><input class="form-control" type="datetime-local" name="pickup_at"></div>
+        <div><label class="form-label">Return</label><input class="form-control" type="datetime-local" name="return_at"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-block btn-lg btn-shine" type="submit">Find rentals</button></div>
+      </div>
+      <datalist id="homeCities"><?php foreach ($cities as $c): ?><option><?= e((string) $c) ?></option><?php endforeach; ?></datalist>
+    </form>
+    <script>
+    (function () {
+      var tabs = document.querySelectorAll('[data-tab]');
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          tabs.forEach(function (x) { x.classList.toggle('on', x === t); });
+          document.getElementById('tab-buy').style.display = t.getAttribute('data-tab') === 'buy' ? '' : 'none';
+          document.getElementById('tab-rent').style.display = t.getAttribute('data-tab') === 'rent' ? '' : 'none';
+        });
+      });
+    })();
+    </script>
   </div>
 </section>
 

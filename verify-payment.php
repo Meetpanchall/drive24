@@ -19,10 +19,32 @@ if (!$u) { verifyFail('Session expired, please log in again.'); }
 $sent = $_POST['_token'] ?? '';
 if (!is_string($sent) || !hash_equals(csrfToken(), $sent)) { verifyFail('Session expired, please try again.'); }
 
-$orderId = (int) ($_POST['order_id'] ?? 0);
 $rzpOrder = (string) ($_POST['razorpay_order_id'] ?? '');
 $rzpPay = (string) ($_POST['razorpay_payment_id'] ?? '');
 $rzpSig = (string) ($_POST['razorpay_signature'] ?? '');
+
+// Rental bookings share this endpoint (kind=rental from rent-pay.php).
+if (($_POST['kind'] ?? '') === 'rental') {
+    $rentalId = (int) ($_POST['rental_id'] ?? 0);
+    $r = findRental($rentalId, (int) $u['id']);
+    if (!$r) { verifyFail('Rental not found.'); }
+    if (($r['status'] ?? '') !== 'pending') {
+        echo json_encode(['ok' => true, 'redirect' => base('rental.php?id=' . $rentalId)]);
+        exit;
+    }
+    if ((string) ($r['rzp_order_id'] ?? '') !== $rzpOrder || $rzpOrder === '') { verifyFail('Order mismatch, please retry.'); }
+    if (!razorpayVerifySignature($rzpOrder, $rzpPay, $rzpSig)) { verifyFail('Signature check failed - rental NOT confirmed.'); }
+    try {
+        confirmRentalPayment($rentalId, $rzpPay);
+    } catch (Throwable $ex) {
+        verifyFail('Payment verified but booking failed: ' . $ex->getMessage());
+    }
+    logActivity((int) $u['id'], 'rental.created', 'Rental #' . $rentalId . ' via Razorpay ' . $rzpPay);
+    echo json_encode(['ok' => true, 'redirect' => base('rental.php?id=' . $rentalId)]);
+    exit;
+}
+
+$orderId = (int) ($_POST['order_id'] ?? 0);
 
 $order = fetchOne('SELECT * FROM orders WHERE id = ? AND buyer_id = ?', [$orderId, $u['id']]);
 if (!$order) { verifyFail('Order not found.'); }

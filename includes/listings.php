@@ -5,6 +5,7 @@ require_once __DIR__ . '/helpers.php';
 const LISTING_SELECT = 'SELECT l.id, l.price, l.original_price, l.status, l.featured, l.certified,
         l.inspection_score, l.views, l.seller_id, l.created_at,
         l.auction_enabled, l.auction_ends_at, l.starting_bid,
+        l.rental_enabled, l.price_per_day, l.km_limit_day, l.extra_km_rate, l.security_deposit,
         v.id AS vehicle_id, v.make, v.model, v.variant, v.year, v.body_type, v.fuel_type, v.transmission,
         v.km_driven, v.owners, v.color, v.reg_number, v.reg_state, v.vin, v.engine_cc, v.power_bhp,
         v.mileage_kmpl, v.seats, v.insurance_valid_till, v.city, v.area, v.image, v.description,

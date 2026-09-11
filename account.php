@@ -185,6 +185,7 @@ renderHeader('My account', '');
       <a class="btn btn-outline btn-block btn-sm" href="<?= e(base('wishlist.php')) ?>">Wishlist &amp; alerts</a>
       <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('chat.php')) ?>">My messages</a>
       <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('services.php')) ?>">Documents &amp; services</a>
+      <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('my-rentals.php')) ?>">My rentals</a>
       <a class="btn btn-outline btn-block btn-sm" style="margin-top:8px" href="<?= e(base('verify-otp.php')) ?>">Verify mobile (OTP)</a>
       <?php if (isRole('seller', 'dealer', 'admin')): ?><a class="btn btn-dark btn-block btn-sm" style="margin-top:8px" href="<?= e(base('seller/dashboard.php')) ?>">Seller portal</a><?php endif; ?>
     </aside>

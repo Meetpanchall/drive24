@@ -15,6 +15,7 @@ function adminHeader(string $title, string $active = '', string $area = 'admin')
         ],
         'Commerce' => [
             'orders'   => ['Orders', 'admin/orders.php'],
+            'rentals'  => ['Rentals', 'admin/rentals.php'],
             'payments' => ['Payments &amp; refunds', 'admin/payments.php'],
             'offers'   => ['Offers', 'admin/offers.php'],
             'payouts'  => ['Seller payouts', 'admin/payouts.php'],

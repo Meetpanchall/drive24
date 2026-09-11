@@ -121,7 +121,7 @@ function statusBadge(?string $status): string
     $status = (string) $status;
     $map = [
         'active' => 'ok', 'approved' => 'ok', 'paid' => 'ok', 'delivered' => 'ok', 'verified' => 'ok',
-        'completed' => 'ok', 'accepted' => 'ok', 'sold' => 'ok', 'disbursed' => 'ok', 'purchased' => 'ok',
+        'completed' => 'ok', 'accepted' => 'ok', 'sold' => 'ok', 'disbursed' => 'ok', 'purchased' => 'ok', 'settled' => 'ok',
         'pending' => 'warn', 'processing' => 'warn', 'scheduled' => 'warn', 'requested' => 'warn',
         'in_transit' => 'warn', 'countered' => 'warn', 'quoted' => 'warn', 'under_review' => 'warn',
         'confirmed' => 'info', 'reserved' => 'info', 'draft' => 'info', 'open' => 'info', 'new' => 'info',

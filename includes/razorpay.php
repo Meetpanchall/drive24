@@ -75,6 +75,35 @@ function razorpayCreateOrder(int $amountPaise, string $receipt): array
     return $data;
 }
 
+/** Refund a captured payment (deposit settlement). Amount in paise. Returns decoded refund. */
+function razorpayRefund(string $paymentId, int $amountPaise): array
+{
+    $id = razorpayKeyId();
+    $rc = razorpayConfig();
+    $secret = (string) ($rc['key_secret'] ?? '');
+    if ($id === '' || $secret === '') { throw new RuntimeException('Razorpay keys are not configured.'); }
+    if (!function_exists('curl_init')) { throw new RuntimeException('PHP cURL is required for Razorpay refunds.'); }
+    $ch = curl_init('https://api.razorpay.com/v1/payments/' . urlencode($paymentId) . '/refund');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_USERPWD        => $id . ':' . $secret,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS     => json_encode(['amount' => $amountPaise]),
+        CURLOPT_TIMEOUT        => 20,
+    ]);
+    $raw = curl_exec($ch);
+    $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    $data = json_decode((string) $raw, true);
+    if ($http < 200 || $http >= 300 || !is_array($data) || empty($data['id'])) {
+        $msg = is_array($data) ? (string) (($data['error']['description'] ?? '') ?: $raw) : (string) $raw;
+        error_log('Razorpay refund failed (HTTP ' . $http . '): ' . substr($msg, 0, 300));
+        throw new RuntimeException('Refund failed (HTTP ' . $http . '): ' . substr($msg, 0, 180));
+    }
+    return $data;
+}
+
 /** Verify the payment signature sent back by Checkout.js. */
 function razorpayVerifySignature(string $orderId, string $paymentId, string $signature): bool
 {
@@ -117,6 +146,7 @@ function confirmBookingPayment(int $orderId, string $txnRef, string $method): vo
         q("UPDATE listings SET status = 'reserved' WHERE id = ?", [(int) $order['listing_id']]);
         insert('payouts', ['seller_id' => (int) $car['seller_id'], 'order_id' => $orderId, 'amount' => (float) $car['price'] * 0.96, 'status' => 'pending']);
         $pdo->commit();
+    notify((int) $order['buyer_id'], 'Booking confirmed', 'Order ' . $order['order_no'] . ' - ' . vehicleTitle($car), 'order.php?id=' . $orderId);
     } catch (Throwable $ex) {
         $pdo->rollBack();
         throw $ex;

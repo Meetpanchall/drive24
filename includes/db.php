@@ -88,6 +88,12 @@ function ensureExtendedSchema(): void
             ['vehicle_history', 'odometer_verified', 'TINYINT(1) NOT NULL DEFAULT 0'],
             ['vehicle_history', 'rc_verified', 'TINYINT(1) NOT NULL DEFAULT 0'],
             ['support_tickets', 'priority', "ENUM('low','medium','high') NOT NULL DEFAULT 'medium'"],
+       ,
+            ['listings', 'rental_enabled', 'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['listings', 'price_per_day', 'DECIMAL(10,2) DEFAULT NULL'],
+            ['listings', 'km_limit_day', 'INT NOT NULL DEFAULT 250'],
+            ['listings', 'extra_km_rate', 'DECIMAL(8,2) NOT NULL DEFAULT 12.00'],
+            ['listings', 'security_deposit', 'DECIMAL(10,2) NOT NULL DEFAULT 10000.00'],
         ];
         foreach ($needCols as [$tbl, $colName, $def]) {
             $n = (int) fetchValue(
@@ -96,6 +102,20 @@ function ensureExtendedSchema(): void
             );
             if ($n === 0) { db()->exec("ALTER TABLE `$tbl` ADD COLUMN `$colName` $def"); }
         }
+        // Rental module: tables + enable rentals on approved cars (existing installs).
+        $hasRent = (int) fetchValue(
+            'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?',
+            [$dbName, 'rentals'], 0
+        );
+        if ($hasRent === 0) {
+            $mig = (string) @file_get_contents(__DIR__ . '/../database/migrate.sql');
+            foreach (['rentals', 'rental_charges'] as $tbl) {
+                if (preg_match('/CREATE TABLE IF NOT EXISTS ' . $tbl . ' \(.*?\) ENGINE=InnoDB;/s', $mig, $m)) {
+                    db()->exec($m[0]);
+                }
+            }
+        }
+        db()->exec("UPDATE listings SET rental_enabled = 1, price_per_day = GREATEST(999, ROUND(price/450, -2)), km_limit_day = 250, extra_km_rate = 12.00, security_deposit = 15000.00 WHERE status = 'approved' AND rental_enabled = 0 AND price_per_day IS NULL");
     } catch (Throwable $e) { /* never break a request for a migration */ }
 }
 

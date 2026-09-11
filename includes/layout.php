@@ -7,7 +7,7 @@ function renderHeader(string $title, string $active = ''): void
     $u = user();
     $wish = count(wishlistIds());
     $cmp = count(compareIds());
-    $nav = ['home' => ['Home', 'index.php'], 'cars' => ['Buy Cars', 'cars.php'], 'sell' => ['Sell Your Car', 'sell.php'],
+    $nav = ['home' => ['Home', 'index.php'], 'cars' => ['Buy Cars', 'cars.php'], 'rent' => ['Rent a Car', 'rent.php'], 'sell' => ['Sell Your Car', 'sell.php'],
             'finance' => ['Finance', 'finance.php'], 'services' => ['Services', 'services.php'], 'compare' => ['Compare', 'compare.php']];
     $unread = unreadNotifications();
     $q = trim((string) ($_GET['q'] ?? ''));
@@ -86,7 +86,8 @@ function renderFooter(): void
         <a href="<?= e(base('cars.php?body=SUV')) ?>">SUVs <span class="chev">&rsaquo;</span></a>
         <a href="<?= e(base('cars.php?body=Sedan')) ?>">Sedans <span class="chev">&rsaquo;</span></a>
         <a href="<?= e(base('cars.php?body=Hatchback')) ?>">Hatchbacks <span class="chev">&rsaquo;</span></a>
-        <a href="<?= e(base('compare.php')) ?>">Compare Cars <span class="chev">&rsaquo;</span></a></div>
+        <a href="<?= e(base('compare.php')) ?>">Compare Cars <span class="chev">&rsaquo;</span></a>
+        <a href="<?= e(base('rent.php')) ?>">Rent a Car <span class="chev">&rsaquo;</span></a></div>
       <div><h4>Sell</h4>
         <a href="<?= e(base('sell.php')) ?>">Instant Valuation <span class="chev">&rsaquo;</span></a>
         <a href="<?= e(base('sell.php')) ?>">Sell Your Car <span class="chev">&rsaquo;</span></a>

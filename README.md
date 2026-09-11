@@ -119,3 +119,12 @@ install.php                setup verification + API catalogue
 - Payments: Razorpay is integrated (`checkout.php` -> `pay.php` -> `verify-payment.php`) with TEST keys pre-filled in `config/config.php`, so Pay opens the real Razorpay gateway (UPI/cards/netbanking/wallets/EMI) out of the box. Needs PHP `curl` + internet to reach api.razorpay.com. Verify with Razorpay test cards (e.g. 4111 1111 1111 1111). Swap in LIVE keys (or `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` env vars) for production; blank keys fall back to simulated test mode.
 - VIN/history: swap `vinDecode()` and the `vehicle_history` seed with VINData/Parivahan/carVertical APIs.
 - Lenders/insurers: exchange the static panels in `loan-apply.php` / `insurance.php` for partner APIs.
+
+## 8. Self-drive rentals
+
+- `rent.php` - location + pickup/return date search with live availability, filters and price/rating sort.
+- `rent-car.php` - rental details: 360-degree drag-to-rotate viewer, specs, features, per-day price, KM limit, deposit and policies.
+- `rent-checkout.php` - driving-licence KYC gate (upload inline, admin verifies in `admin/kyc.php`) + full price breakup (rental, weekly discount, GST, deposit).
+- `rent-pay.php` + `verify-payment.php` (`kind=rental`) - Razorpay payment for rental + deposit; test mode confirms instantly without keys.
+- `rental.php` - trip screen: OTP pickup handover (odometer/fuel/notes), live trip + roadside SOS, return inspection (extra-KM/fuel/late/damage auto-charges), Razorpay deposit refund, review & rating.
+- `my-rentals.php` - booking history; `admin/rentals.php` - ops board for all rental statuses.

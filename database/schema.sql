@@ -64,6 +64,11 @@ CREATE TABLE listings (
   auction_enabled TINYINT(1) NOT NULL DEFAULT 0,
   auction_ends_at DATETIME DEFAULT NULL,
   starting_bid DECIMAL(12,2) DEFAULT NULL,
+  rental_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  price_per_day DECIMAL(10,2) DEFAULT NULL,
+  km_limit_day INT NOT NULL DEFAULT 250,
+  extra_km_rate DECIMAL(8,2) NOT NULL DEFAULT 12.00,
+  security_deposit DECIMAL(10,2) NOT NULL DEFAULT 10000.00,
   rejection_note VARCHAR(255) DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_listing_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
@@ -157,6 +162,42 @@ CREATE TABLE payouts (
   status ENUM('pending','processing','paid','failed') NOT NULL DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS rentals (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  booking_no VARCHAR(40) NOT NULL UNIQUE,
+  listing_id INT NOT NULL, user_id INT NOT NULL,
+  pickup_location VARCHAR(160) NOT NULL, return_location VARCHAR(160) NOT NULL,
+  pickup_at DATETIME NOT NULL, return_at DATETIME NOT NULL,
+  days SMALLINT NOT NULL DEFAULT 1,
+  price_per_day DECIMAL(10,2) NOT NULL,
+  rental_amount DECIMAL(12,2) NOT NULL,
+  discount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  tax DECIMAL(12,2) NOT NULL DEFAULT 0,
+  deposit DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total_charged DECIMAL(12,2) NOT NULL DEFAULT 0,
+  status ENUM('pending','confirmed','active','returned','settled','cancelled') NOT NULL DEFAULT 'pending',
+  rzp_order_id VARCHAR(60) DEFAULT NULL, rzp_payment_id VARCHAR(60) DEFAULT NULL,
+  pickup_otp VARCHAR(10) DEFAULT NULL,
+  pickup_odo INT DEFAULT NULL, pickup_fuel TINYINT DEFAULT NULL,
+  return_odo INT DEFAULT NULL, return_fuel TINYINT DEFAULT NULL,
+  pickup_notes VARCHAR(255) DEFAULT NULL, return_notes VARCHAR(255) DEFAULT NULL,
+  refund_amount DECIMAL(12,2) DEFAULT NULL, refund_status VARCHAR(20) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_rent_listing (listing_id), INDEX idx_rent_user (user_id), INDEX idx_rent_dates (pickup_at, return_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS rental_charges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  rental_id INT NOT NULL,
+  kind ENUM('extra_km','fuel','damage','cleaning','late','other') NOT NULL DEFAULT 'other',
+  label VARCHAR(160) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (rental_id) REFERENCES rentals(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE documents (
@@ -287,6 +328,8 @@ INSERT INTO listings (vehicle_id,seller_id,price,original_price,status,featured,
 (10,5,798000,840000,'approved',0,1,89,162,1,'2026-09-20 18:00:00',750000),
 (11,5,1050000,1120000,'pending',0,0,0,0,0,NULL,NULL),
 (12,4,1180000,1250000,'pending',0,0,0,0,0,NULL,NULL);
+
+UPDATE listings SET rental_enabled = 1, price_per_day = GREATEST(999, ROUND(price/450, -2)), km_limit_day = 250, extra_km_rate = 12.00, security_deposit = 15000.00 WHERE status = 'approved' AND rental_enabled = 0 AND price_per_day IS NULL;
 
 INSERT INTO inspections (vehicle_id,inspector,score,engine_score,exterior_score,interior_score,electrical_score,tyres_score,accident_history,remarks,status,inspected_on) VALUES
 (1,'Ravi Kulkarni',94,96,92,95,93,90,'No major accident','Excellent condition, minor bumper scuff repainted.','completed','2026-08-12'),

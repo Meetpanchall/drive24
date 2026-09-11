@@ -225,3 +225,40 @@ CREATE TABLE IF NOT EXISTS questions (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_q_listing (listing_id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS rentals (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  booking_no VARCHAR(40) NOT NULL UNIQUE,
+  listing_id INT NOT NULL, user_id INT NOT NULL,
+  pickup_location VARCHAR(160) NOT NULL, return_location VARCHAR(160) NOT NULL,
+  pickup_at DATETIME NOT NULL, return_at DATETIME NOT NULL,
+  days SMALLINT NOT NULL DEFAULT 1,
+  price_per_day DECIMAL(10,2) NOT NULL,
+  rental_amount DECIMAL(12,2) NOT NULL,
+  discount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  tax DECIMAL(12,2) NOT NULL DEFAULT 0,
+  deposit DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total_charged DECIMAL(12,2) NOT NULL DEFAULT 0,
+  status ENUM('pending','confirmed','active','returned','settled','cancelled') NOT NULL DEFAULT 'pending',
+  rzp_order_id VARCHAR(60) DEFAULT NULL, rzp_payment_id VARCHAR(60) DEFAULT NULL,
+  pickup_otp VARCHAR(10) DEFAULT NULL,
+  pickup_odo INT DEFAULT NULL, pickup_fuel TINYINT DEFAULT NULL,
+  return_odo INT DEFAULT NULL, return_fuel TINYINT DEFAULT NULL,
+  pickup_notes VARCHAR(255) DEFAULT NULL, return_notes VARCHAR(255) DEFAULT NULL,
+  refund_amount DECIMAL(12,2) DEFAULT NULL, refund_status VARCHAR(20) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_rent_listing (listing_id), INDEX idx_rent_user (user_id), INDEX idx_rent_dates (pickup_at, return_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS rental_charges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  rental_id INT NOT NULL,
+  kind ENUM('extra_km','fuel','damage','cleaning','late','other') NOT NULL DEFAULT 'other',
+  label VARCHAR(160) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (rental_id) REFERENCES rentals(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
